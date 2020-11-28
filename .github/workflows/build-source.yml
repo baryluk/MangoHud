@@ -2,11 +2,9 @@ name: Build source tars
 on:
   release:
     types: ["published"]
-on:
   push:
     tags: ["v*"]
-on:
-  workflow_dispatch
+  workflow_dispatch:
 
 jobs:
   build:
