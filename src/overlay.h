@@ -32,6 +32,13 @@ struct swapchain_stats {
    ImFont* font_text = nullptr;
    size_t font_params_hash = 0;
    std::string time;
+
+   // Frametimes of up to previous 64 frames, used for calculating
+   // adaptive moving average for fps calculation. This is a circular buffer.
+   uint32_t last_frames_usec[64];
+   int last_frames_i = 0;
+   int last_frames_count = 0;
+
    double fps;
    struct iostats io;
    uint64_t last_present_time;

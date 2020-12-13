@@ -73,9 +73,6 @@ void update_hud_info(struct swapchain_stats& sw_stats, struct overlay_params& pa
    uint32_t f_idx = sw_stats.n_frames % ARRAY_SIZE(sw_stats.frames_stats);
    uint64_t now = os_time_get(); /* us */
    double elapsed = (double)(now - sw_stats.last_fps_update); /* us */
-   fps = 1000000.0f * sw_stats.n_frames_since_update / elapsed;
-   if (logger->is_active())
-      benchmark.fps_data.push_back(fps);
 
    if (sw_stats.last_present_time) {
         sw_stats.frames_stats[f_idx].stats[OVERLAY_PLOTS_frame_timing] =
@@ -83,6 +80,36 @@ void update_hud_info(struct swapchain_stats& sw_stats, struct overlay_params& pa
    }
 
    frametime = now - sw_stats.last_present_time;
+
+   // Adaptive moving average for fps calculation. This is a circular buffer.
+   sw_stats.last_frames_i = (sw_stats.last_frames_i + 1) % ARRAY_SIZE(sw_stats.last_frames_usec);
+   sw_stats.last_frames_count = MIN2(sw_stats.last_frames_count + 1, (int)(ARRAY_SIZE(sw_stats.last_frames_usec)));
+   sw_stats.last_frames_usec[sw_stats.last_frames_i] = MIN2(frametime, UINT32_MAX);
+
+   if (sw_stats.n_frames_since_update > 2 * ARRAY_SIZE(sw_stats.frames_stats)) {
+      // If we have enough frames, use naive method.
+      fps = 1000000.0f * sw_stats.n_frames_since_update / elapsed;
+   } else {
+      // Calculate moving average of up to 64 frames.
+      // The average could use less samples, if:
+      //   1) We just started and don't have samples accumulated.
+      //   2) Recent frametimes were really high (fps < 10 fps).
+      uint64_t total_frametime_usec = 0;
+      int total_frames_count = 0;
+      for (int i = 0, j = sw_stats.last_frames_i; i < sw_stats.last_frames_count; i++, j++) {
+         total_frames_count++;
+         total_frametime_usec += sw_stats.last_frames_usec[j % ARRAY_SIZE(sw_stats.last_frames_usec)];
+         // Terminate early, to provide quick update and responsivness without a delay.
+         if (total_frametime_usec > 600*1000) {  // 600ms
+             break;
+         }
+      }
+      fps = (1000000.0f * total_frames_count) / total_frametime_usec;
+   }
+
+   if (logger->is_active())
+      benchmark.fps_data.push_back(fps);
+
    if (elapsed >= params.fps_sampling_period) {
       std::thread(update_hw_info, std::ref(sw_stats), std::ref(params), vendorID).detach();
       sw_stats.fps = fps;
