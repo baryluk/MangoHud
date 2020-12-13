@@ -81,10 +81,13 @@ void update_hud_info(struct swapchain_stats& sw_stats, struct overlay_params& pa
 
    frametime = now - sw_stats.last_present_time;
 
+   const int frames_size = ARRAY_SIZE(sw_stats.last_frames_usec);
+
    // Adaptive moving average for fps calculation. This is a circular buffer.
-   sw_stats.last_frames_i = (sw_stats.last_frames_i + 1) % ARRAY_SIZE(sw_stats.last_frames_usec);
-   sw_stats.last_frames_count = MIN2(sw_stats.last_frames_count + 1, (int)(ARRAY_SIZE(sw_stats.last_frames_usec)));
    sw_stats.last_frames_usec[sw_stats.last_frames_i] = MIN2(frametime, UINT32_MAX);
+   // last_frames_i points 1 past the last valid entry.
+   sw_stats.last_frames_i = (sw_stats.last_frames_i + 1) % frames_size;
+   sw_stats.last_frames_count = MIN2(sw_stats.last_frames_count + 1, frames_size);
 
    if (sw_stats.n_frames_since_update > 2 * ARRAY_SIZE(sw_stats.frames_stats)) {
       // If we have enough frames, use naive method.
@@ -93,18 +96,54 @@ void update_hud_info(struct swapchain_stats& sw_stats, struct overlay_params& pa
       // Calculate moving average of up to 64 frames.
       // The average could use less samples, if:
       //   1) We just started and don't have samples accumulated.
-      //   2) Recent frametimes were really high (fps < 10 fps).
+      //   2) Recent frametimes were really high (i.e. fps < 10 FPS).
       uint64_t total_frametime_usec = 0;
       int total_frames_count = 0;
-      for (int i = 0, j = sw_stats.last_frames_i; i < sw_stats.last_frames_count; i++, j++) {
+      // Traverse buffer backwards from last valid sample.
+      for (int i = 0, j = sw_stats.last_frames_i - 1; i < sw_stats.last_frames_count; i++, j--) {
+         // Add 'frames_size', so modulo result stays positive.
+         const uint32_t sample_frametime_i = sw_stats.last_frames_usec[(j + frames_size) % frames_size];
+
+         // Terminate early if we just recovered from very big FPS dip.
+         if (total_frames_count >= 1 && total_frametime_usec + sample_frametime_i > 2 * total_frametime_usec && total_frametime_usec < 10000 * total_frames_count) {
+            break;
+         }
+
          total_frames_count++;
-         total_frametime_usec += sw_stats.last_frames_usec[j % ARRAY_SIZE(sw_stats.last_frames_usec)];
-         // Terminate early, to provide quick update and responsivness without a delay.
-         if (total_frametime_usec > 600*1000) {  // 600ms
+         total_frametime_usec += sample_frametime_i;
+         // Terminate early if FPS is very low, to provide quick GUI update
+         // and responsivness without a delay.
+         // For example if our last 60 samples, were all 1ms (avg 1000 FPS),
+         // and now suddenly samples are 500ms, we don't want to wait 64 samples (64 seconds!),
+         // for the buffer to fill up with these 500ms, until we reach average of 500ms.
+         // Instead almost immedietly terminate and calculate average using
+         // only last 5 frames.
+         if (total_frametime_usec > 300*1000 && total_frames_count >= 5) {
+             // 300ms and at least 5 frames
+             // < ~ 16.6 FPS
              break;
          }
+         if (total_frametime_usec > 1000*1000) {
+             // 1000ms and at least 1 frame
+             // < ~ 1 FPS
+             break;
+         }
+         // TODO: We can also pre-terminate at the start of the next loop,
+         // instead of updating total_frametime_usec, if it was 'old' sample.
+         // Would provide extra responsivness in recovery.
+         // But we need at least 1 sample included.
       }
       fps = (1000000.0f * total_frames_count) / total_frametime_usec;
+
+      // Another option is to use weighted FPS with exponential weights,
+      // and take into account the span of frames, with weights function,
+      // being dependend on time, not frame index, i.e. w(t) = exp(-alpha*t).
+      // I.e. Instead calculating a average of last 64 frames, instead
+      // calculate average effective fps over last 500ms.
+
+      // Note: We don't use modification in place of tht total_frames_count and
+      // total_frametime_usec, because of potential lose of precision, and not
+      // allowing us to do adaptive average.
    }
 
    if (logger->is_active())
