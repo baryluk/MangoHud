@@ -135,7 +135,7 @@ def handle_message(msg):
 def thread_loop(sock):
     protocol_version_warning_shown = False
     while not stop and not stop_ev.is_set():
-        msg = pb.Message(protocol_version=1, client_type=pb.ClientType.GUI)
+        msg = pb.Message(protocol_version=1, client_type=pb.Message.ClientType.GUI)
         send(sock, msg)
 
         msg = recv(sock)

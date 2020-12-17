@@ -6,6 +6,9 @@
 #error Regenerate this file with the current version of nanopb generator.
 #endif
 
+PB_BIND(RpcMessage, RpcMessage, AUTO)
+
+
 PB_BIND(Message, Message, 2)
 
 
@@ -54,6 +57,9 @@ PB_BIND(CpuInfo, CpuInfo, AUTO)
 PB_BIND(MemInfo, MemInfo, AUTO)
 
 
+PB_BIND(IoInfo, IoInfo, AUTO)
+
+
 PB_BIND(GpuInfoApp, GpuInfoApp, AUTO)
 
 
@@ -61,6 +67,11 @@ PB_BIND(CpuInfoApp, CpuInfoApp, AUTO)
 
 
 PB_BIND(MemInfoApp, MemInfoApp, AUTO)
+
+
+PB_BIND(IoInfoApp, IoInfoApp, AUTO)
+
+
 
 
 

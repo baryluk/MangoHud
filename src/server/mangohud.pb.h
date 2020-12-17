@@ -10,11 +10,32 @@
 #endif
 
 /* Enum definitions */
-typedef enum _ClientType {
-    ClientType_APP = 0,
-    ClientType_SERVER = 1,
-    ClientType_GUI = 2
-} ClientType;
+typedef enum _TimestampSource {
+    TimestampSource_MONOTONIC_RAW = 0,
+    TimestampSource_MONOTONIC = 1,
+    TimestampSource_MONOTONIC_COARSE = 2,
+    TimestampSource_BOOTTIME = 3,
+    TimestampSource_REALTIME = 4,
+    TimestampSource_REALTIME_COARSE = 5,
+    TimestampSource_TAI = 6,
+    TimestampSource_GETTIMEOFDAY_UTC = 7,
+    TimestampSource_GETTIMEOFDAY_LOCAL = 8,
+    TimestampSource_TIME = 9,
+    TimestampSource_WINDOWS_QueryPerformanceCounter = 10
+} TimestampSource;
+
+typedef enum _Message_ClientType {
+    Message_ClientType_APP = 0,
+    Message_ClientType_SERVER = 1,
+    Message_ClientType_GUI = 2
+} Message_ClientType;
+
+typedef enum _Architecture_OS {
+    Architecture_OS_LINUX = 0,
+    Architecture_OS_FREEBSD = 1,
+    Architecture_OS_MACOS = 2,
+    Architecture_OS_WINDOWS = 3
+} Architecture_OS;
 
 /* Struct definitions */
 typedef struct _Alive {
@@ -22,7 +43,9 @@ typedef struct _Alive {
 } Alive;
 
 typedef struct _Architecture {
-    char *os;
+    Architecture_OS *os;
+    char *distro;
+    char *distro_version;
     char *kernel_version;
     char *architecture;
     char *mangohud_library_version;
@@ -110,9 +133,9 @@ typedef struct _CpuInfoApp {
 } CpuInfoApp;
 
 typedef struct _FrameTime {
-    uint64_t *timestamp;
-    uint64_t *index;
-    uint32_t *time;
+    uint64_t *timestamp_usec;
+    uint32_t *index;
+    uint32_t *time_usec;
 } FrameTime;
 
 typedef struct _GpuInfo {
@@ -147,6 +170,14 @@ typedef struct _GpuInfoApp {
     uint64_t *pipelines;
 } GpuInfoApp;
 
+typedef struct _IoInfo {
+    char dummy_field;
+} IoInfo;
+
+typedef struct _IoInfoApp {
+    char dummy_field;
+} IoInfoApp;
+
 typedef struct _MemInfo {
     uint64_t *total;
     uint64_t *free;
@@ -173,13 +204,17 @@ typedef struct _MemInfoApp {
 
 typedef struct _Message {
     uint32_t *protocol_version;
+    Message_ClientType *client_type;
     struct _Alive *alive;
     struct _Architecture *architecture;
     char *nodename;
     uint64_t *pid;
     uint64_t *uid;
+    uint64_t *gid;
+    char *groups;
     char *username;
     char *program_name;
+    char *wine_version;
     struct _RenderInfo *render_info;
     struct _BlackListInfo *blacklist;
     struct _ConfigRequest *config_request;
@@ -190,6 +225,10 @@ typedef struct _Message {
     float *fps;
     pb_size_t frametimes_count;
     struct _FrameTime *frametimes;
+    uint64_t *frames;
+    uint64_t *last_present_time_usec;
+    uint32_t *frames_since_update;
+    uint64_t *last_fps_update_usec;
     bool *stream_frametimes;
     bool *show_hud;
     pb_size_t frame_limits_count;
@@ -203,11 +242,13 @@ typedef struct _Message {
     struct _CpuInfo *cpu_info;
     struct _CpuInfo *cpu_info_details;
     struct _MemInfo *mem_info;
+    pb_size_t io_info_count;
+    struct _IoInfo *io_info;
     pb_size_t app_gpu_info_count;
     struct _GpuInfoApp *app_gpu_info;
     struct _CpuInfoApp *app_cpu_info;
     struct _MemInfoApp *app_mem_info;
-    ClientType *client_type;
+    struct _IoInfoApp *app_io_info;
     pb_size_t clients_count;
     struct _Message *clients;
 } Message;
@@ -217,20 +258,55 @@ typedef struct _RenderInfo {
     bool *vulkan;
     char *opengl_version;
     char *opengl_device_name;
-    char *vulkan_driver_name;
+    int32_t *opengl_version_major;
+    int32_t *opengl_version_minor;
+    bool *opengl_is_gles;
+    pb_size_t opengl_extensions_count;
+    char **opengl_extensions;
     char *engine_name;
+    char *engine_version;
+    char *device_name;
+    char *gpu_name;
+    char *driver_name;
+    int32_t *vulkan_version_major;
+    int32_t *vulkan_version_minor;
+    int32_t *vulkan_version_patch;
+    pb_size_t vulkan_instance_layers_active_count;
+    char **vulkan_instance_layers_active;
+    pb_size_t vulkan_instance_extensions_count;
+    char **vulkan_instance_extensions;
+    pb_size_t vulkan_device_extensions_available_count;
+    char **vulkan_device_extensions_available;
+    pb_size_t vulkan_device_extensions_enabled_count;
+    char **vulkan_device_extensions_enabled;
+    bool *vulkan_validation_enabled;
+    int32_t *device_id;
 } RenderInfo;
+
+typedef struct _RpcMessage {
+    uint32_t *protocol_version;
+    uint64_t *rpc_id;
+    struct _Message *msg;
+} RpcMessage;
 
 typedef struct _Timestamp {
     char *clock_source;
-    uint64_t *timestamp;
+    uint64_t *timestamp_usec;
 } Timestamp;
 
 
 /* Helper constants for enums */
-#define _ClientType_MIN ClientType_APP
-#define _ClientType_MAX ClientType_GUI
-#define _ClientType_ARRAYSIZE ((ClientType)(ClientType_GUI+1))
+#define _TimestampSource_MIN TimestampSource_MONOTONIC_RAW
+#define _TimestampSource_MAX TimestampSource_WINDOWS_QueryPerformanceCounter
+#define _TimestampSource_ARRAYSIZE ((TimestampSource)(TimestampSource_WINDOWS_QueryPerformanceCounter+1))
+
+#define _Message_ClientType_MIN Message_ClientType_APP
+#define _Message_ClientType_MAX Message_ClientType_GUI
+#define _Message_ClientType_ARRAYSIZE ((Message_ClientType)(Message_ClientType_GUI+1))
+
+#define _Architecture_OS_MIN Architecture_OS_LINUX
+#define _Architecture_OS_MAX Architecture_OS_WINDOWS
+#define _Architecture_OS_ARRAYSIZE ((Architecture_OS)(Architecture_OS_WINDOWS+1))
 
 
 #ifdef __cplusplus
@@ -238,10 +314,11 @@ extern "C" {
 #endif
 
 /* Initializer values for message structs */
-#define Message_init_default                     {NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, 0, NULL, NULL, NULL, 0, NULL, NULL, NULL, NULL, NULL, 0, NULL, NULL, NULL, NULL, 0, NULL, NULL, NULL, NULL, 0, NULL}
+#define RpcMessage_init_default                  {NULL, NULL, NULL}
+#define Message_init_default                     {NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, 0, NULL, NULL, NULL, NULL, NULL, NULL, NULL, 0, NULL, NULL, NULL, NULL, NULL, 0, NULL, NULL, NULL, NULL, 0, NULL, 0, NULL, NULL, NULL, NULL, 0, NULL}
 #define Alive_init_default                       {NULL}
-#define Architecture_init_default                {NULL, NULL, NULL, NULL, NULL, NULL}
-#define RenderInfo_init_default                  {NULL, NULL, NULL, NULL, NULL, NULL}
+#define Architecture_init_default                {NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL}
+#define RenderInfo_init_default                  {NULL, NULL, NULL, NULL, NULL, NULL, NULL, 0, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, 0, NULL, 0, NULL, 0, NULL, 0, NULL, NULL, NULL}
 #define BlackListInfo_init_default               {NULL, 0, NULL}
 #define ConfigRequest_init_default               {NULL, NULL, NULL}
 #define ConfigReload_init_default                {NULL}
@@ -254,13 +331,16 @@ extern "C" {
 #define GpuInfo_init_default                     {NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL}
 #define CpuInfo_init_default                     {NULL, 0, NULL, NULL, 0, NULL, 0, NULL, 0, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, 0, NULL}
 #define MemInfo_init_default                     {NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL}
+#define IoInfo_init_default                      {0}
 #define GpuInfoApp_init_default                  {NULL, NULL}
 #define CpuInfoApp_init_default                  {NULL, NULL, NULL}
 #define MemInfoApp_init_default                  {NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL}
-#define Message_init_zero                        {NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, 0, NULL, NULL, NULL, 0, NULL, NULL, NULL, NULL, NULL, 0, NULL, NULL, NULL, NULL, 0, NULL, NULL, NULL, NULL, 0, NULL}
+#define IoInfoApp_init_default                   {0}
+#define RpcMessage_init_zero                     {NULL, NULL, NULL}
+#define Message_init_zero                        {NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, 0, NULL, NULL, NULL, NULL, NULL, NULL, NULL, 0, NULL, NULL, NULL, NULL, NULL, 0, NULL, NULL, NULL, NULL, 0, NULL, 0, NULL, NULL, NULL, NULL, 0, NULL}
 #define Alive_init_zero                          {NULL}
-#define Architecture_init_zero                   {NULL, NULL, NULL, NULL, NULL, NULL}
-#define RenderInfo_init_zero                     {NULL, NULL, NULL, NULL, NULL, NULL}
+#define Architecture_init_zero                   {NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL}
+#define RenderInfo_init_zero                     {NULL, NULL, NULL, NULL, NULL, NULL, NULL, 0, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, 0, NULL, 0, NULL, 0, NULL, 0, NULL, NULL, NULL}
 #define BlackListInfo_init_zero                  {NULL, 0, NULL}
 #define ConfigRequest_init_zero                  {NULL, NULL, NULL}
 #define ConfigReload_init_zero                   {NULL}
@@ -273,18 +353,22 @@ extern "C" {
 #define GpuInfo_init_zero                        {NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL}
 #define CpuInfo_init_zero                        {NULL, 0, NULL, NULL, 0, NULL, 0, NULL, 0, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, 0, NULL}
 #define MemInfo_init_zero                        {NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL}
+#define IoInfo_init_zero                         {0}
 #define GpuInfoApp_init_zero                     {NULL, NULL}
 #define CpuInfoApp_init_zero                     {NULL, NULL, NULL}
 #define MemInfoApp_init_zero                     {NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL}
+#define IoInfoApp_init_zero                      {0}
 
 /* Field tags (for use in manual encoding/decoding) */
 #define Alive_dummy_tag                          1
 #define Architecture_os_tag                      1
-#define Architecture_kernel_version_tag          2
-#define Architecture_architecture_tag            3
-#define Architecture_mangohud_library_version_tag 4
-#define Architecture_mangohud_server_verion_tag  5
-#define Architecture_mangohud_gui_version_tag    6
+#define Architecture_distro_tag                  2
+#define Architecture_distro_version_tag          3
+#define Architecture_kernel_version_tag          4
+#define Architecture_architecture_tag            5
+#define Architecture_mangohud_library_version_tag 6
+#define Architecture_mangohud_server_verion_tag  7
+#define Architecture_mangohud_gui_version_tag    8
 #define BlackListInfo_blacklisted_tag            1
 #define BlackListInfo_blacklist_names_tag        2
 #define Config_fps_sampling_interval_msec_tag    1
@@ -330,9 +414,9 @@ extern "C" {
 #define CpuInfoApp_cpu_usage_total_usec_tag      1
 #define CpuInfoApp_wall_clock_total_usec_tag     2
 #define CpuInfoApp_thread_count_tag              3
-#define FrameTime_timestamp_tag                  1
+#define FrameTime_timestamp_usec_tag             1
 #define FrameTime_index_tag                      2
-#define FrameTime_time_tag                       3
+#define FrameTime_time_usec_tag                  3
 #define GpuInfo_bus_tag                          1
 #define GpuInfo_pci_dev_info_tag                 2
 #define GpuInfo_gpu_name_tag                     3
@@ -378,82 +462,127 @@ extern "C" {
 #define MemInfoApp_maj_fault_tag                 10
 #define MemInfoApp_min_fault_tag                 11
 #define Message_protocol_version_tag             1
-#define Message_alive_tag                        2
-#define Message_architecture_tag                 3
-#define Message_nodename_tag                     4
-#define Message_pid_tag                          5
-#define Message_uid_tag                          6
-#define Message_username_tag                     7
-#define Message_program_name_tag                 8
-#define Message_render_info_tag                  9
-#define Message_blacklist_tag                    10
-#define Message_config_request_tag               11
-#define Message_config_data_tag                  12
-#define Message_config_reload_tag                13
-#define Message_timestamp_tag                    20
-#define Message_app_uptime_msec_tag              21
-#define Message_fps_tag                          30
-#define Message_frametimes_tag                   31
-#define Message_stream_frametimes_tag            40
-#define Message_show_hud_tag                     41
-#define Message_frame_limits_tag                 42
-#define Message_vsync_tag                        43
-#define Message_media_player_string_tag          50
-#define Message_extra_string1_tag                51
-#define Message_extra_string2_tag                52
-#define Message_gpu_info_tag                     60
-#define Message_cpu_info_tag                     61
-#define Message_cpu_info_details_tag             62
-#define Message_mem_info_tag                     63
-#define Message_app_gpu_info_tag                 70
-#define Message_app_cpu_info_tag                 71
-#define Message_app_mem_info_tag                 73
-#define Message_client_type_tag                  100
-#define Message_clients_tag                      200
+#define Message_client_type_tag                  2
+#define Message_alive_tag                        3
+#define Message_architecture_tag                 10
+#define Message_nodename_tag                     11
+#define Message_pid_tag                          12
+#define Message_uid_tag                          13
+#define Message_gid_tag                          14
+#define Message_groups_tag                       15
+#define Message_username_tag                     16
+#define Message_program_name_tag                 17
+#define Message_wine_version_tag                 18
+#define Message_render_info_tag                  20
+#define Message_blacklist_tag                    30
+#define Message_config_request_tag               31
+#define Message_config_data_tag                  32
+#define Message_config_reload_tag                33
+#define Message_timestamp_tag                    40
+#define Message_app_uptime_msec_tag              41
+#define Message_fps_tag                          50
+#define Message_frametimes_tag                   51
+#define Message_frames_tag                       52
+#define Message_last_present_time_usec_tag       53
+#define Message_frames_since_update_tag          54
+#define Message_last_fps_update_usec_tag         55
+#define Message_stream_frametimes_tag            60
+#define Message_show_hud_tag                     61
+#define Message_frame_limits_tag                 62
+#define Message_vsync_tag                        63
+#define Message_media_player_string_tag          70
+#define Message_extra_string1_tag                71
+#define Message_extra_string2_tag                72
+#define Message_gpu_info_tag                     80
+#define Message_cpu_info_tag                     81
+#define Message_cpu_info_details_tag             82
+#define Message_mem_info_tag                     83
+#define Message_io_info_tag                      84
+#define Message_app_gpu_info_tag                 90
+#define Message_app_cpu_info_tag                 91
+#define Message_app_mem_info_tag                 93
+#define Message_app_io_info_tag                  94
+#define Message_clients_tag                      100
 #define RenderInfo_opengl_tag                    1
 #define RenderInfo_vulkan_tag                    2
 #define RenderInfo_opengl_version_tag            10
 #define RenderInfo_opengl_device_name_tag        11
-#define RenderInfo_vulkan_driver_name_tag        20
-#define RenderInfo_engine_name_tag               21
+#define RenderInfo_opengl_version_major_tag      12
+#define RenderInfo_opengl_version_minor_tag      13
+#define RenderInfo_opengl_is_gles_tag            14
+#define RenderInfo_opengl_extensions_tag         15
+#define RenderInfo_engine_name_tag               20
+#define RenderInfo_engine_version_tag            21
+#define RenderInfo_device_name_tag               22
+#define RenderInfo_gpu_name_tag                  23
+#define RenderInfo_driver_name_tag               24
+#define RenderInfo_vulkan_version_major_tag      25
+#define RenderInfo_vulkan_version_minor_tag      26
+#define RenderInfo_vulkan_version_patch_tag      27
+#define RenderInfo_vulkan_instance_layers_active_tag 28
+#define RenderInfo_vulkan_instance_extensions_tag 29
+#define RenderInfo_vulkan_device_extensions_available_tag 30
+#define RenderInfo_vulkan_device_extensions_enabled_tag 31
+#define RenderInfo_vulkan_validation_enabled_tag 32
+#define RenderInfo_device_id_tag                 40
+#define RpcMessage_protocol_version_tag          1
+#define RpcMessage_rpc_id_tag                    2
+#define RpcMessage_msg_tag                       6
 #define Timestamp_clock_source_tag               1
-#define Timestamp_timestamp_tag                  2
+#define Timestamp_timestamp_usec_tag             2
 
 /* Struct field encoding specification for nanopb */
+#define RpcMessage_FIELDLIST(X, a) \
+X(a, POINTER,  SINGULAR, UINT32,   protocol_version,   1) \
+X(a, POINTER,  SINGULAR, UINT64,   rpc_id,            2) \
+X(a, POINTER,  OPTIONAL, MESSAGE,  msg,               6)
+#define RpcMessage_CALLBACK NULL
+#define RpcMessage_DEFAULT NULL
+#define RpcMessage_msg_MSGTYPE Message
+
 #define Message_FIELDLIST(X, a) \
 X(a, POINTER,  SINGULAR, UINT32,   protocol_version,   1) \
-X(a, POINTER,  OPTIONAL, MESSAGE,  alive,             2) \
-X(a, POINTER,  OPTIONAL, MESSAGE,  architecture,      3) \
-X(a, POINTER,  SINGULAR, STRING,   nodename,          4) \
-X(a, POINTER,  SINGULAR, UINT64,   pid,               5) \
-X(a, POINTER,  SINGULAR, UINT64,   uid,               6) \
-X(a, POINTER,  SINGULAR, STRING,   username,          7) \
-X(a, POINTER,  SINGULAR, STRING,   program_name,      8) \
-X(a, POINTER,  OPTIONAL, MESSAGE,  render_info,       9) \
-X(a, POINTER,  OPTIONAL, MESSAGE,  blacklist,        10) \
-X(a, POINTER,  OPTIONAL, MESSAGE,  config_request,   11) \
-X(a, POINTER,  OPTIONAL, MESSAGE,  config_data,      12) \
-X(a, POINTER,  OPTIONAL, MESSAGE,  config_reload,    13) \
-X(a, POINTER,  OPTIONAL, MESSAGE,  timestamp,        20) \
-X(a, POINTER,  SINGULAR, UINT64,   app_uptime_msec,  21) \
-X(a, POINTER,  SINGULAR, FLOAT,    fps,              30) \
-X(a, POINTER,  REPEATED, MESSAGE,  frametimes,       31) \
-X(a, POINTER,  SINGULAR, BOOL,     stream_frametimes,  40) \
-X(a, POINTER,  SINGULAR, BOOL,     show_hud,         41) \
-X(a, POINTER,  REPEATED, FLOAT,    frame_limits,     42) \
-X(a, POINTER,  SINGULAR, BOOL,     vsync,            43) \
-X(a, POINTER,  SINGULAR, STRING,   media_player_string,  50) \
-X(a, POINTER,  SINGULAR, STRING,   extra_string1,    51) \
-X(a, POINTER,  SINGULAR, STRING,   extra_string2,    52) \
-X(a, POINTER,  REPEATED, MESSAGE,  gpu_info,         60) \
-X(a, POINTER,  OPTIONAL, MESSAGE,  cpu_info,         61) \
-X(a, POINTER,  OPTIONAL, MESSAGE,  cpu_info_details,  62) \
-X(a, POINTER,  OPTIONAL, MESSAGE,  mem_info,         63) \
-X(a, POINTER,  REPEATED, MESSAGE,  app_gpu_info,     70) \
-X(a, POINTER,  OPTIONAL, MESSAGE,  app_cpu_info,     71) \
-X(a, POINTER,  OPTIONAL, MESSAGE,  app_mem_info,     73) \
-X(a, POINTER,  SINGULAR, UENUM,    client_type,     100) \
-X(a, POINTER,  REPEATED, MESSAGE,  clients,         200)
+X(a, POINTER,  SINGULAR, UENUM,    client_type,       2) \
+X(a, POINTER,  OPTIONAL, MESSAGE,  alive,             3) \
+X(a, POINTER,  OPTIONAL, MESSAGE,  architecture,     10) \
+X(a, POINTER,  SINGULAR, STRING,   nodename,         11) \
+X(a, POINTER,  SINGULAR, UINT64,   pid,              12) \
+X(a, POINTER,  SINGULAR, UINT64,   uid,              13) \
+X(a, POINTER,  SINGULAR, UINT64,   gid,              14) \
+X(a, POINTER,  SINGULAR, STRING,   groups,           15) \
+X(a, POINTER,  SINGULAR, STRING,   username,         16) \
+X(a, POINTER,  SINGULAR, STRING,   program_name,     17) \
+X(a, POINTER,  SINGULAR, STRING,   wine_version,     18) \
+X(a, POINTER,  OPTIONAL, MESSAGE,  render_info,      20) \
+X(a, POINTER,  OPTIONAL, MESSAGE,  blacklist,        30) \
+X(a, POINTER,  OPTIONAL, MESSAGE,  config_request,   31) \
+X(a, POINTER,  OPTIONAL, MESSAGE,  config_data,      32) \
+X(a, POINTER,  OPTIONAL, MESSAGE,  config_reload,    33) \
+X(a, POINTER,  OPTIONAL, MESSAGE,  timestamp,        40) \
+X(a, POINTER,  SINGULAR, UINT64,   app_uptime_msec,  41) \
+X(a, POINTER,  SINGULAR, FLOAT,    fps,              50) \
+X(a, POINTER,  REPEATED, MESSAGE,  frametimes,       51) \
+X(a, POINTER,  SINGULAR, UINT64,   frames,           52) \
+X(a, POINTER,  SINGULAR, UINT64,   last_present_time_usec,  53) \
+X(a, POINTER,  SINGULAR, UINT32,   frames_since_update,  54) \
+X(a, POINTER,  SINGULAR, UINT64,   last_fps_update_usec,  55) \
+X(a, POINTER,  SINGULAR, BOOL,     stream_frametimes,  60) \
+X(a, POINTER,  SINGULAR, BOOL,     show_hud,         61) \
+X(a, POINTER,  REPEATED, FLOAT,    frame_limits,     62) \
+X(a, POINTER,  SINGULAR, BOOL,     vsync,            63) \
+X(a, POINTER,  SINGULAR, STRING,   media_player_string,  70) \
+X(a, POINTER,  SINGULAR, STRING,   extra_string1,    71) \
+X(a, POINTER,  SINGULAR, STRING,   extra_string2,    72) \
+X(a, POINTER,  REPEATED, MESSAGE,  gpu_info,         80) \
+X(a, POINTER,  OPTIONAL, MESSAGE,  cpu_info,         81) \
+X(a, POINTER,  OPTIONAL, MESSAGE,  cpu_info_details,  82) \
+X(a, POINTER,  OPTIONAL, MESSAGE,  mem_info,         83) \
+X(a, POINTER,  REPEATED, MESSAGE,  io_info,          84) \
+X(a, POINTER,  REPEATED, MESSAGE,  app_gpu_info,     90) \
+X(a, POINTER,  OPTIONAL, MESSAGE,  app_cpu_info,     91) \
+X(a, POINTER,  OPTIONAL, MESSAGE,  app_mem_info,     93) \
+X(a, POINTER,  OPTIONAL, MESSAGE,  app_io_info,      94) \
+X(a, POINTER,  REPEATED, MESSAGE,  clients,         100)
 #define Message_CALLBACK NULL
 #define Message_DEFAULT NULL
 #define Message_alive_MSGTYPE Alive
@@ -469,9 +598,11 @@ X(a, POINTER,  REPEATED, MESSAGE,  clients,         200)
 #define Message_cpu_info_MSGTYPE CpuInfo
 #define Message_cpu_info_details_MSGTYPE CpuInfo
 #define Message_mem_info_MSGTYPE MemInfo
+#define Message_io_info_MSGTYPE IoInfo
 #define Message_app_gpu_info_MSGTYPE GpuInfoApp
 #define Message_app_cpu_info_MSGTYPE CpuInfoApp
 #define Message_app_mem_info_MSGTYPE MemInfoApp
+#define Message_app_io_info_MSGTYPE IoInfoApp
 #define Message_clients_MSGTYPE Message
 
 #define Alive_FIELDLIST(X, a) \
@@ -480,12 +611,14 @@ X(a, POINTER,  SINGULAR, UINT32,   dummy,             1)
 #define Alive_DEFAULT NULL
 
 #define Architecture_FIELDLIST(X, a) \
-X(a, POINTER,  SINGULAR, STRING,   os,                1) \
-X(a, POINTER,  SINGULAR, STRING,   kernel_version,    2) \
-X(a, POINTER,  SINGULAR, STRING,   architecture,      3) \
-X(a, POINTER,  SINGULAR, STRING,   mangohud_library_version,   4) \
-X(a, POINTER,  SINGULAR, STRING,   mangohud_server_verion,   5) \
-X(a, POINTER,  SINGULAR, STRING,   mangohud_gui_version,   6)
+X(a, POINTER,  SINGULAR, UENUM,    os,                1) \
+X(a, POINTER,  SINGULAR, STRING,   distro,            2) \
+X(a, POINTER,  SINGULAR, STRING,   distro_version,    3) \
+X(a, POINTER,  SINGULAR, STRING,   kernel_version,    4) \
+X(a, POINTER,  SINGULAR, STRING,   architecture,      5) \
+X(a, POINTER,  SINGULAR, STRING,   mangohud_library_version,   6) \
+X(a, POINTER,  SINGULAR, STRING,   mangohud_server_verion,   7) \
+X(a, POINTER,  SINGULAR, STRING,   mangohud_gui_version,   8)
 #define Architecture_CALLBACK NULL
 #define Architecture_DEFAULT NULL
 
@@ -494,8 +627,24 @@ X(a, POINTER,  SINGULAR, BOOL,     opengl,            1) \
 X(a, POINTER,  SINGULAR, BOOL,     vulkan,            2) \
 X(a, POINTER,  SINGULAR, STRING,   opengl_version,   10) \
 X(a, POINTER,  SINGULAR, STRING,   opengl_device_name,  11) \
-X(a, POINTER,  SINGULAR, STRING,   vulkan_driver_name,  20) \
-X(a, POINTER,  SINGULAR, STRING,   engine_name,      21)
+X(a, POINTER,  SINGULAR, INT32,    opengl_version_major,  12) \
+X(a, POINTER,  SINGULAR, INT32,    opengl_version_minor,  13) \
+X(a, POINTER,  SINGULAR, BOOL,     opengl_is_gles,   14) \
+X(a, POINTER,  REPEATED, STRING,   opengl_extensions,  15) \
+X(a, POINTER,  SINGULAR, STRING,   engine_name,      20) \
+X(a, POINTER,  SINGULAR, STRING,   engine_version,   21) \
+X(a, POINTER,  SINGULAR, STRING,   device_name,      22) \
+X(a, POINTER,  SINGULAR, STRING,   gpu_name,         23) \
+X(a, POINTER,  SINGULAR, STRING,   driver_name,      24) \
+X(a, POINTER,  SINGULAR, INT32,    vulkan_version_major,  25) \
+X(a, POINTER,  SINGULAR, INT32,    vulkan_version_minor,  26) \
+X(a, POINTER,  SINGULAR, INT32,    vulkan_version_patch,  27) \
+X(a, POINTER,  REPEATED, STRING,   vulkan_instance_layers_active,  28) \
+X(a, POINTER,  REPEATED, STRING,   vulkan_instance_extensions,  29) \
+X(a, POINTER,  REPEATED, STRING,   vulkan_device_extensions_available,  30) \
+X(a, POINTER,  REPEATED, STRING,   vulkan_device_extensions_enabled,  31) \
+X(a, POINTER,  SINGULAR, BOOL,     vulkan_validation_enabled,  32) \
+X(a, POINTER,  SINGULAR, INT32,    device_id,        40)
 #define RenderInfo_CALLBACK NULL
 #define RenderInfo_DEFAULT NULL
 
@@ -558,14 +707,14 @@ X(a, POINTER,  SINGULAR, STRING,   keybinding,        1)
 
 #define Timestamp_FIELDLIST(X, a) \
 X(a, POINTER,  SINGULAR, STRING,   clock_source,      1) \
-X(a, POINTER,  SINGULAR, UINT64,   timestamp,         2)
+X(a, POINTER,  SINGULAR, UINT64,   timestamp_usec,    2)
 #define Timestamp_CALLBACK NULL
 #define Timestamp_DEFAULT NULL
 
 #define FrameTime_FIELDLIST(X, a) \
-X(a, POINTER,  SINGULAR, UINT64,   timestamp,         1) \
-X(a, POINTER,  SINGULAR, UINT64,   index,             2) \
-X(a, POINTER,  SINGULAR, UINT32,   time,              3)
+X(a, POINTER,  SINGULAR, UINT64,   timestamp_usec,    1) \
+X(a, POINTER,  SINGULAR, UINT32,   index,             2) \
+X(a, POINTER,  SINGULAR, UINT32,   time_usec,         3)
 #define FrameTime_CALLBACK NULL
 #define FrameTime_DEFAULT NULL
 
@@ -632,6 +781,11 @@ X(a, POINTER,  SINGULAR, UINT64,   swap_used,        12)
 #define MemInfo_CALLBACK NULL
 #define MemInfo_DEFAULT NULL
 
+#define IoInfo_FIELDLIST(X, a) \
+
+#define IoInfo_CALLBACK NULL
+#define IoInfo_DEFAULT NULL
+
 #define GpuInfoApp_FIELDLIST(X, a) \
 X(a, POINTER,  SINGULAR, UINT64,   vram_used,         1) \
 X(a, POINTER,  SINGULAR, UINT64,   pipelines,         2)
@@ -658,6 +812,12 @@ X(a, POINTER,  SINGULAR, UINT64,   min_fault,        11)
 #define MemInfoApp_CALLBACK NULL
 #define MemInfoApp_DEFAULT NULL
 
+#define IoInfoApp_FIELDLIST(X, a) \
+
+#define IoInfoApp_CALLBACK NULL
+#define IoInfoApp_DEFAULT NULL
+
+extern const pb_msgdesc_t RpcMessage_msg;
 extern const pb_msgdesc_t Message_msg;
 extern const pb_msgdesc_t Alive_msg;
 extern const pb_msgdesc_t Architecture_msg;
@@ -674,11 +834,14 @@ extern const pb_msgdesc_t FrameTime_msg;
 extern const pb_msgdesc_t GpuInfo_msg;
 extern const pb_msgdesc_t CpuInfo_msg;
 extern const pb_msgdesc_t MemInfo_msg;
+extern const pb_msgdesc_t IoInfo_msg;
 extern const pb_msgdesc_t GpuInfoApp_msg;
 extern const pb_msgdesc_t CpuInfoApp_msg;
 extern const pb_msgdesc_t MemInfoApp_msg;
+extern const pb_msgdesc_t IoInfoApp_msg;
 
 /* Defines for backwards compatibility with code written before nanopb-0.4.0 */
+#define RpcMessage_fields &RpcMessage_msg
 #define Message_fields &Message_msg
 #define Alive_fields &Alive_msg
 #define Architecture_fields &Architecture_msg
@@ -695,11 +858,14 @@ extern const pb_msgdesc_t MemInfoApp_msg;
 #define GpuInfo_fields &GpuInfo_msg
 #define CpuInfo_fields &CpuInfo_msg
 #define MemInfo_fields &MemInfo_msg
+#define IoInfo_fields &IoInfo_msg
 #define GpuInfoApp_fields &GpuInfoApp_msg
 #define CpuInfoApp_fields &CpuInfoApp_msg
 #define MemInfoApp_fields &MemInfoApp_msg
+#define IoInfoApp_fields &IoInfoApp_msg
 
 /* Maximum encoded size of messages (where known) */
+/* RpcMessage_size depends on runtime parameters */
 /* Message_size depends on runtime parameters */
 /* Alive_size depends on runtime parameters */
 /* Architecture_size depends on runtime parameters */
@@ -716,9 +882,11 @@ extern const pb_msgdesc_t MemInfoApp_msg;
 /* GpuInfo_size depends on runtime parameters */
 /* CpuInfo_size depends on runtime parameters */
 /* MemInfo_size depends on runtime parameters */
+#define IoInfo_size                              0
 /* GpuInfoApp_size depends on runtime parameters */
 /* CpuInfoApp_size depends on runtime parameters */
 /* MemInfoApp_size depends on runtime parameters */
+#define IoInfoApp_size                           0
 
 #ifdef __cplusplus
 } /* extern "C" */

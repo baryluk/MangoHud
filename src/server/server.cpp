@@ -65,7 +65,7 @@ struct RequestContext {
 };
 
 static int prepare_gui_response(Message* response, struct RequestContext *const context) {
-    assert(PB_IF(context->server_state->recent_state.client_type, ClientType_GUI));
+    assert(PB_IF(context->server_state->recent_state.client_type, Message_ClientType_GUI));
 
     char hostname[HOST_NAME_MAX + 1];
     hostname[0] = '\0';
@@ -91,7 +91,7 @@ static int prepare_gui_response(Message* response, struct RequestContext *const 
         if (context->server_state->server_states_index == other_server_state->server_states_index) {
             continue;
         }
-        if (PB_IF(other_server_state->recent_state.client_type, ClientType_GUI)) {
+        if (PB_IF(other_server_state->recent_state.client_type, Message_ClientType_GUI)) {
             continue;
         }
 
@@ -102,7 +102,6 @@ static int prepare_gui_response(Message* response, struct RequestContext *const 
         // Populate nodename from the server (all reporting clients are
         // connected to server on local machine only).
         PB_MALLOC_SET_STR(sub_response.nodename, response->nodename);
-
 
         // Populate most recent stats for each client.
         PB_MAYBE_UPDATE(sub_response.uid, other_server_state->recent_state.uid);
@@ -127,53 +126,58 @@ static int server_request_handler(const Message* const request, void* my_state) 
     struct ServerState *const server_state = context->server_state;
     assert(server_state != NULL);
 
+    Message *const recent_state = &(server_state->recent_state);
+
     // Debugging / sanity checks.
     // assert(server_state->client_state.connected);
 
-    //if (request->protocol_version) {
-    //    fprintf(stderr, "protocol_version from client: %" PRIu32 "\n", *(request->protocol_version));
-    //}
-
+    PB_MAYBE_UPDATE(recent_state->protocol_version, request->protocol_version);
+    PB_MAYBE_UPDATE(recent_state->client_type, request->client_type);
+    PB_MAYBE_UPDATE(recent_state->timestamp, request->timestamp);
     uint64_t pid = 0;
     if (request->pid) {
-        //fprintf(stderr, "   pid: %" PRIu64 "\n", *request->pid);
+        PB_MAYBE_UPDATE(recent_state->pid, request->pid);
         pid = *request->pid;
     }
-    if (request->uid) {
-        //fprintf(stderr, "   uid: %" PRIu64 "\n", *request->uid);
-    }
-    if (request->fps) {
+    PB_MAYBE_UPDATE(recent_state->uid, request->uid);
+    {
+        if (recent_state->render_info == NULL) {
+            PB_MALLOC_SET(recent_state->render_info, RenderInfo_init_zero);
+        }
         char* type = "unknown";
         if (request->render_info && request->render_info->opengl && *request->render_info->opengl) {
             type = "OpenGL";
+            PB_MAYBE_UPDATE(recent_state->render_info->opengl, request->render_info->opengl);
         }
         if (request->render_info && request->render_info->vulkan && *request->render_info->vulkan) {
             type = "Vulkan";
+            PB_MAYBE_UPDATE(recent_state->render_info->vulkan, request->render_info->vulkan);
         }
         char* engine_name = "";
         if (request->render_info && request->render_info->engine_name) {
             engine_name = request->render_info->engine_name;
+            PB_MAYBE_UPDATE(recent_state->render_info->engine_name, request->render_info->engine_name);
         }
         char* driver_name = "";
-        if (request->render_info && request->render_info->vulkan_driver_name) {
-            driver_name = request->render_info->vulkan_driver_name;
+        if (request->render_info && request->render_info->driver_name) {
+            driver_name = request->render_info->driver_name;
+            PB_MAYBE_UPDATE(recent_state->render_info->driver_name, request->render_info->driver_name);
         }
-        
-        fprintf(stderr, "pid %9ld   fps: %.3f  name=%s  type=%s engine=%s driver=%s\n", pid, *request->fps, request->program_name, type, engine_name, driver_name);
 
-        PB_MAYBE_UPDATE_STR(server_state->recent_state.program_name, request->program_name);
-        PB_MAYBE_UPDATE(server_state->recent_state.fps, request->fps);
+        if (request->fps) {
+            PB_MAYBE_UPDATE(server_state->recent_state.fps, request->fps);
+            fprintf(stderr, "pid %9ld   fps: %.3f  name=%s  type=%s engine=%s driver=%s\n", pid, *request->fps, request->program_name, type, engine_name, driver_name);
+        }
+
+        PB_MAYBE_UPDATE_STR(recent_state->program_name, request->program_name);
     }
 
-    PB_MAYBE_UPDATE(server_state->recent_state.client_type, request->client_type);
-    PB_MAYBE_UPDATE(server_state->recent_state.uid, request->uid);
-    PB_MAYBE_UPDATE(server_state->recent_state.pid, request->pid);
 
     std::vector<uint32_t> frametimes;
     if (request->frametimes) {
         for (int i = 0; i < request->frametimes_count; i++) {
-            if (request->frametimes[i].time) {
-               frametimes.push_back(*(request->frametimes[i].time));
+            if (request->frametimes[i].time_usec) {
+               frametimes.push_back(*(request->frametimes[i].time_usec));
             }
         }
     }
@@ -190,8 +194,9 @@ static int server_request_handler(const Message* const request, void* my_state) 
         client_state->response = response;
 
         response->protocol_version = a<uint32_t>(1);
+        response->client_type = a<Message_ClientType>(Message_ClientType_SERVER);
 
-        if (PB_IF(request->client_type, ClientType_GUI)) {
+        if (PB_IF(request->client_type, Message_ClientType_GUI)) {
             prepare_gui_response(response, context);
         }
     } else {

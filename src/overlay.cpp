@@ -33,61 +33,191 @@ static int mango_message_generator(Message* message, void* my_state) {
    assert(message != NULL);
    assert(my_state != NULL);
 
+   const uint64_t now = os_time_get(); /* us */
+
    struct swapchain_stats *const sw_stats = (struct swapchain_stats *)my_state;
 
    PB_MALLOC_SET(message->protocol_version, 1);
+   PB_MALLOC_SET(message->client_type, Message_ClientType_APP);
    PB_MALLOC_SET(message->pid, getpid());
    PB_MALLOC_SET(message->uid, getuid());
    PB_MALLOC_SET(message->fps, fps);
    if (program_name.size()) {
        message->program_name = strndup(program_name.data(), program_name.length());
    }
+   if (wine_version.size()) {
+       message->wine_version = strndup(wine_version.data(), wine_version.length());
+   }
+
+   PB_MALLOC_SET(message->timestamp, Timestamp_init_zero);
+   PB_MALLOC_SET(message->timestamp->clock_source, TimestampSource_MONOTONIC);
+   PB_MALLOC_SET(message->timestamp->timestamp, now);
+
+   // PB_MALLOC_SET(message->app_uptime_msec, );  // In Linux there is no way to really find this out.
+   // A possible option might be reading /proc/self/sched
+   // and reading se.exec_start                                :     785249279.391105
+   // We can do it once.
+   // Not sure which clock it is using. Definitively not any of REALTIME ones.
+
+/*
+  uint64 app_uptime_msec = 21;
+
+  repeated FrameTime frametimes = 31;
+
+  bool stream_frametimes = 40;
+
+  bool show_hud = 41;
+
+  repeated float frame_limits = 42;  // Can be a list of frame limits a user can toggle between, or empty to disable.
+  bool vsync = 43;
+*/
+
+/*
+
+message FrameTime {
+  // All in microseconds.
+  uint64 timestamp = 1;  // Absolute timestamp. Monotonic.
+  uint64 index = 2;  // Counter of frames. Monotonic.
+  uint32 time = 3;  // The actual frametime.
+}
+*/
+
    PB_MALLOC_SET(message->render_info, RenderInfo_init_zero);
+   RenderInfo *const render_info = message->render_info;
    if (sw_stats->version_gl.major && sw_stats->version_gl.minor) {
-     PB_MALLOC_SET(message->render_info->opengl, true);
+     PB_MALLOC_SET(render_info->opengl, true);
+     PB_MALLOC_SET(render_info->version_gl_major, sw_stats->version_gl.major);
+     PB_MALLOC_SET(render_info->version_gl_minor, sw_stats->version_gl.minor);
+     PB_MALLOC_SET(render_info->version_gl_is_gles, sw_stats->version_gl.is_gles); // bool
+
+     // vendor string
+     // renderer string
+     // core profile version string:
+     // Video memory
    }
    if (sw_stats->version_vk.major && sw_stats->version_vk.minor) {
-     PB_MALLOC_SET(message->render_info->vulkan, true);
+     PB_MALLOC_SET(render_info->vulkan, true);
+     PB_MALLOC_SET(render_info->version_vk_major, sw_stats->version_vk.major);
+     PB_MALLOC_SET(render_info->version_vk_minor, sw_stats->version_vk.minor);
+     PB_MALLOC_SET(render_info->version_vk_patch, sw_stats->version_vk.patch);
    }
-   RenderInfo *const render_info = message->render_info;
    render_info->engine_name = strndup(sw_stats->engineName.data(), sw_stats->engineName.length());
-   render_info->vulkan_driver_name = strndup(sw_stats->driverName.data(), sw_stats->driverName.length());
+   render_info->engine_version = strndup(sw_stats->engineVersion.data(), sw_stats->engineVersion.length());
+   render_info->device_name = strndup(sw_stats->deviceName.data(), sw_stats->deviceName.length());
+   render_info->gpu_name = strndup(sw_stats->gpuName.data(), sw_stats->gpuName.length());
+   render_info->driver_name = strndup(sw_stats->driverName.data(), sw_stats->driverName.length());
+   PB_MALLOC_SET(render_info_>device_id, deviceID); // int32
+
+
+   PB_MALLOC_SET(message->frames, sw_stats->n_frames);  // uint64_t
+   PB_MALLOC_SET(message->last_present_time_usec, sw_stats->last_present_time);  // uint64_t
+   PB_MALLOC_SET(message->frames_since_update, sw_stats->n_frames_since_update);  // unsigned
+   PB_MALLOC_SET(message->last_fps_update_usec, sw_stats->last_fps_update);  // uint64_t
+   // PB_MALLOC_SET(message->hud->main_window_pos_x, sw_stats->main_window_pos.x);  // ImVec2
+   // PB_MALLOC_SET(message->hud->main_window_pos_y, sw_stats->main_window_pos.y);
+
+
+   // params.fps_sampling_period
+
+
+   // System / Process IO.
+   if (true) {
+     //PB_MALLOC_SET(message->app_io_info, AppIoInfo_init_zero);
+     //AppIoInfo *const app_io = message->app_io_info;
+     //IoInfo *const sys_io = message->io_info;
+
+//   struct iostats io;
+
+     // Rates (computed on client side)
+     // PB_MALLOC_SET(app_io, sw_stats->io.read_iops);
+
+     // Cummulatives
+     // PB_MALLOC_SET(app_io, sw_stats->io.read_iops);
+   }
+
+   if (
+
+   // Frame stats
+   // double time_dividor;
+   // struct frame_stat stats_min, stats_max;
+
+   // All frametime dumps
+/*
+struct frame_stat {
+   uint64_t stats[OVERLAY_PLOTS_MAX];
+};
+*/
+
+//   struct frame_stat frames_stats[200];
+
 
 // More stuff to copy from sw_stats
 /*
-   std::string engineName;
-   std::string engineVersion;
-   std::string deviceName;
-   std::string gpuName;
-   std::string driverName;
 
-   uint64_t n_frames;
    enum overlay_plots stat_selector;
-   double time_dividor;
-   struct frame_stat stats_min, stats_max;
-   struct frame_stat frames_stats[200];
-
 
    std::string time;
-   double fps;
-   struct iostats io;
-   uint64_t last_present_time;
-   unsigned n_frames_since_update;
-   uint64_t last_fps_update;
-   ImVec2 main_window_pos;
-
-
-   struct {
-      int32_t major;
-      int32_t minor;
-      bool is_gles;
-   } version_gl;
-   struct {
-      int32_t major;
-      int32_t minor;
-      int32_t patch;
-   } version_vk;
 */
+
+/*
+   currentLogData.gpu_load = gpu_info.load;
+   currentLogData.gpu_temp = gpu_info.temp;
+   currentLogData.gpu_core_clock = gpu_info.CoreClock;
+   currentLogData.gpu_mem_clock = gpu_info.MemClock;
+   currentLogData.gpu_vram_used = gpu_info.memoryUsed;
+#ifdef __gnu_linux__
+   currentLogData.ram_used = memused;
+#endif
+
+
+   currentLogData.cpu_load = cpuStats.GetCPUDataTotal().percent;
+   currentLogData.cpu_temp = cpuStats.GetCPUDataTotal().temp;
+
+*/
+
+
+/*
+struct fps_limit {
+   Clock::time_point frameStart;
+   Clock::time_point frameEnd;
+   Clock::duration targetFrameTime;
+   Clock::duration frameOverhead;
+   Clock::duration sleepTime;
+};
+   
+struct benchmark_stats {
+   float total;
+   std::vector<float> fps_data;
+   std::vector<std::pair<std::string, float>> percentile_data;
+};
+   
+struct LOAD_DATA {
+   ImVec4 color_low;
+   ImVec4 color_med;
+   ImVec4 color_high;
+   unsigned med_load;
+   unsigned high_load;
+};
+   
+extern struct fps_limit fps_limit_stats;
+extern int32_t deviceID;
+
+extern struct benchmark_stats benchmark;
+extern ImVec2 real_font_size;
+extern std::string wineVersion;
+extern std::vector<logData> graph_data;
+
+
+*/
+
+   // TODO: FpsLimitter settings
+   // TODO: HUD toggle
+   // TODO: Logging (local and remote) toggle.
+   // TODO: Config reload.
+   // TODO: Use remote config.
+   // TODO: Font types, sizes and colors.
+   // TODO: HUD position (x, y) relative to selected 8-9 possible positions (i.e. top-left, top-right, ...).
+   // TODO: Order of elements in HUD.
 
    return 0;
 }
@@ -196,19 +326,19 @@ void update_hud_info(struct swapchain_stats& sw_stats, struct overlay_params& pa
    sw_stats.n_frames++;
    sw_stats.n_frames_since_update++;
 
-   struct ClientState *const client_state = &(sw_stats.client_state);
+   struct RpcClientState *const rpc_client_state = &(sw_stats.rpc_client_state);
 
-   if (!sw_stats.client_state_initialized) {
-       if (client_connect(client_state) == 0) {
-          client_state->connected = 1;
+   if (!sw_stats.rpc_client_state_initialized) {
+       if (rpc_client_connect(rpc_client_state) == 0) {
+          rpc_client_state->connected = 1;
        }
        // Even if we fail to connect. Still mark as initialized.
-       sw_stats.client_state_initialized = 1;
+       sw_stats.rpc_client_state_initialized = 1;
    }
 
-   client_maybe_communicate(client_state,
-                            &mango_message_generator, (void*)(&sw_stats),
-                            &mango_message_handler, (void*)(&sw_stats));
+   rpc_client_maybe_communicate(rpc_client_state,
+                                &mango_message_generator, (void*)(&sw_stats),
+                                &mango_message_handler, (void*)(&sw_stats));
 }
 
 void calculate_benchmark_data(void *params_void){

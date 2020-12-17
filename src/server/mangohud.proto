@@ -9,89 +9,112 @@ syntax = "proto3";
 //
 // APP_CPU_INFO can be sent from overlay to server, but also from server to GUI.
 
-enum ClientType {
-  APP = 0;
-  SERVER = 1;
-  GUI = 2;
+
+message RpcMessage {
+  uint32 protocol_version = 1;
+  uint64 rpc_id = 2;
+  // uint64 parent_id = 3;
+  // uint64 trace_id = 4;  // global id
+  // uint32 fragment_id = 5;
+  Message msg = 6;
+  // Status status = 7;  // Used to indicate errors.
 }
 
-// All fields are optional.
+// All fields are technically optional.
 //
 // Main message used for communication in both ways.
 //
-// Usually only one field will be set in the message.
+// Usually only somes field will be set in the message.
 message Message {
   // Reserved for future uses.
   uint32 protocol_version = 1;
-  ClientType client_type = 100;
+
+  enum ClientType {
+    APP = 0;
+    SERVER = 1;
+    GUI = 2;
+  }
+
+  ClientType client_type = 2;
 
   // Dummy payload for TCP purposes.
-  Alive alive = 2;
+  Alive alive = 3;
 
   // To send OS, kernel, and architecture (i.e. i386, amd64, aarch64), distro info.
-  Architecture architecture = 3;
+  Architecture architecture = 10;
   // Used to advertise the name of the program. i.e. "heaven_x64", "Doom.exe"
   // When streaming multiple games to GUI, also used to indicate which one the rest of the data corresponds to.
   // When GUI asking to do state changes (I.e. enable frametime streaming, or toggle vsync, hud), to which app to route it too.
-  string nodename = 4;
-  uint64 pid = 5;
-  uint64 uid = 6;
-  string username = 7;
-  string program_name = 8;
+  string nodename = 11;
+  uint64 pid = 12;
+  uint64 uid = 13;
+  uint64 gid = 14;
+  string groups = 15;
+  string username = 16;
+  string program_name = 17;
+  string wine_version = 18;
+
   // Used to send info about Vulkan, OpenGL, non-GPU, driver version, engine name and version, etc.
-  RenderInfo render_info = 9;
+  RenderInfo render_info = 20;
   // A request or response with blacklist.
-  BlackListInfo blacklist = 10;
+  BlackListInfo blacklist = 30;
   // Used on startup to retrive any app-specific config.
-  ConfigRequest config_request = 11;
+  ConfigRequest config_request = 31;
   // Used to update config of running client, i.e. fonts, colors, order of HUD elements, size, position, etc. Can also be used to send config info to remote GUI.
-  Config config_data = 12;
+  Config config_data = 32;
   // Used to ask client to reload files from disk. Can optionally contain path to new config.
-  ConfigReload config_reload = 13;
+  ConfigReload config_reload = 33;
 
   // Using clock MONOTONIC usually, or such.
-  Timestamp timestamp = 20;
-  uint64 app_uptime_msec = 21;  // Uptime of the app in msec from startup.
+  Timestamp timestamp = 40;
+  uint64 app_uptime_msec = 41;  // Uptime of the app in msec from startup.
 
   // Last reported FPS figures by the app. These are usually averages of some kind.
-  float fps = 30;
+  float fps = 50;
 
   // Individual frame timeings. One message can contain information about multiple frames.
-  repeated FrameTime frametimes = 31;
+  repeated FrameTime frametimes = 51;
 
-  // FRAMETIME_PERCENTILE_REPORTS = 32,
-  // HISTOGRAM_SETUP = 33,  // Clear, stop, setup bins.
-  // HISTOGRAM = 34,  // Retrive histogram.
+  // Total frame count.
+  uint64 frames = 52;
+  uint64 last_present_time_usec = 53;
+  uint32 frames_since_update = 54;
+  uint64 last_fps_update_usec = 55;
 
-  bool stream_frametimes = 40;
+  // Percentiles frametime_percentile_reports = 56;
+  // HistogramSetup histogram_setup = 57;  // Clear, stop, setup bins.
+  // Histogram histogram = 58;  // Retrive histogram.
 
-  bool show_hud = 41;
+  bool stream_frametimes = 60;
 
-  repeated float frame_limits = 42;  // Can be a list of frame limits a user can toggle between, or empty to disable.
-  bool vsync = 43;
+  bool show_hud = 61;
 
-  string media_player_string = 50;  // Used to send new media player metadata.
+  repeated float frame_limits = 62;  // Can be a list of frame limits a user can toggle between, or empty to disable.
+  bool vsync = 63;
+
+  string media_player_string = 70;  // Used to send new media player metadata.
 
   // Used to send new extra string to the overlay. User defined.
   // Usually string1 at the top, string2 at the bottom.
-  string extra_string1 = 51;
-  string extra_string2 = 52;
+  string extra_string1 = 71;
+  string extra_string2 = 72;
 
   // Per machine info.
-  repeated GpuInfo gpu_info = 60;  // GPU clocks and temp.
-  CpuInfo cpu_info = 61;  // CPU temperature, clocks, average loads, maximum load, etc.
-  CpuInfo cpu_info_details = 62;  // Per-core stats.
-  MemInfo mem_info = 63;  // System memory usage, swap, etc.
+  repeated GpuInfo gpu_info = 80;  // GPU clocks and temp.
+  CpuInfo cpu_info = 81;  // CPU temperature, clocks, average loads, maximum load, etc.
+  CpuInfo cpu_info_details = 82;  // Per-core stats.
+  MemInfo mem_info = 83;  // System memory usage, swap, etc.
+  repeated IoInfo io_info = 84;  // System IO stats, iops, kB/s, read, write. Cummulative and rates. Total, and/or by device, and/or by file system.
 
   // Per app info.
-  repeated GpuInfoApp app_gpu_info = 70;  // I.e. VRAM use by app, number of active pipelines, etc.
-  CpuInfoApp app_cpu_info = 71;  // I.e. CPU usage and number of threads by app.
-  MemInfoApp app_mem_info = 73;  // I.e. MEM, stack, swap used by app.
-
+  repeated GpuInfoApp app_gpu_info = 90;  // I.e. VRAM use by app, number of active pipelines, etc.
+  CpuInfoApp app_cpu_info = 91;  // I.e. CPU usage and number of threads by app.
+  MemInfoApp app_mem_info = 93;  // I.e. MEM, stack, swap used by app.
+  IoInfoApp app_io_info = 94;  // I.e. cummulative and rates for IO (bytes and operations) by app.
 
   // This is sent to GUI client when they ask for info about all
   // connected clients.
-  repeated Message clients = 200;
+  repeated Message clients = 100;
 
   // Note.
 };
@@ -101,12 +124,21 @@ message Alive {
 }
 
 message Architecture {
-  string os = 1;
-  string kernel_version = 2;
-  string architecture = 3;
-  string mangohud_library_version = 4;
-  string mangohud_server_verion = 5;
-  string mangohud_gui_version = 6;
+  enum OS {
+    LINUX = 0;
+    FREEBSD = 1;
+    MACOS = 2;
+    WINDOWS = 3;
+  }
+
+  OS os = 1;
+  string distro = 2;
+  string distro_version = 3;
+  string kernel_version = 4;
+  string architecture = 5;
+  string mangohud_library_version = 6;
+  string mangohud_server_verion = 7;
+  string mangohud_gui_version = 8;
 }
 
 message RenderInfo {
@@ -115,9 +147,30 @@ message RenderInfo {
 
   string opengl_version = 10;
   string opengl_device_name = 11;
+  int32 opengl_version_major = 12;
+  int32 opengl_version_minor = 13;
+  bool opengl_is_gles = 14;
+  repeated string opengl_extensions = 15;
 
-  string vulkan_driver_name = 20;
-  string engine_name = 21;
+  string engine_name = 20;
+  string engine_version = 21;
+  string device_name = 22;
+  string gpu_name = 23;
+  string driver_name = 24;
+
+  int32 vulkan_version_major = 25;
+  int32 vulkan_version_minor = 26;
+  int32 vulkan_version_patch = 27;
+  repeated string vulkan_instance_layers_active = 28;
+  repeated string vulkan_instance_extensions = 29;
+  repeated string vulkan_device_extensions_available = 30;
+  repeated string vulkan_device_extensions_enabled = 31;
+  bool vulkan_validation_enabled = 32;
+  // For streaming out validation messages.
+  // message VulkanValidationMessage { ... }
+  // repeated VulkanValidationMessage vulkan_validation_messages = 33;
+
+  int32 device_id = 40;
 }
 
 message BlackListInfo {
@@ -144,6 +197,7 @@ message Config {
     uint32 height = 2;
     uint32 offset_x = 3;
     uint32 offset_y = 4;
+    // PositionRelative position = 5;
   }
   HudGeometry hud_geometry = 3;
 
@@ -165,15 +219,34 @@ message Config {
   Key reload_cfg = 7;
 }
 
+enum TimestampSource {
+  // clock_gettime clocks
+  MONOTONIC_RAW = 0;
+  MONOTONIC = 1;
+  MONOTONIC_COARSE = 2;
+  BOOTTIME = 3;
+  REALTIME = 4;
+  REALTIME_COARSE = 5;
+  TAI = 6;
+  // gettimeofday, UTC
+  GETTIMEOFDAY_UTC = 7;
+  GETTIMEOFDAY_LOCAL = 8;
+  // time
+  TIME = 9;
+  // QueryPerformanceCounter
+  WINDOWS_QueryPerformanceCounter = 10;
+}
+
 message Timestamp {
   string clock_source = 1;
-  uint64 timestamp = 2;
+  uint64 timestamp_usec = 2;
 }
 
 message FrameTime {
-  uint64 timestamp = 1;  // Absolute timestamp. Monotonic.
-  uint64 index = 2;  // Counter of frames. Monotonic.
-  uint32 time = 3;  // The actual frametime.
+  // All times in microseconds.
+  uint64 timestamp_usec = 1;  // Absolute timestamp. Monotonic.
+  uint32 index = 2;  // Counter of frames. Monotonic.  // 32-bit @ 5000 FPS, will roll-over in 9.9 days. That is ok. Weeks at normal frame rates.
+  uint32 time_usec = 3;  // The actual frametime.
 }
 
 // Can be repeated if multiple GPUs.
@@ -252,6 +325,9 @@ message MemInfo {
   uint64 swap_used = 12;
 }
 
+message IoInfo {
+}
+
 message GpuInfoApp {
   // In KiB
   uint64 vram_used = 1;
@@ -277,4 +353,7 @@ message MemInfoApp {
 
   uint64 maj_fault = 10;
   uint64 min_fault = 11;
+}
+
+message IoInfoApp {
 }

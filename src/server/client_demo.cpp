@@ -85,6 +85,7 @@ retry:
         if (client_state->response == NULL) {
             Message *request = (Message*)calloc(1, sizeof(Message));
             PB_MALLOC_SET(request->protocol_version, 1);
+            PB_MALLOC_SET(request->client_type, Message_ClientType_APP);
             PB_MALLOC_SET(request->pid, getpid());
             PB_MALLOC_SET(request->uid, getuid());
             PB_MALLOC_SET(request->fps, 50.0f + 20.0f*drand48());
@@ -95,7 +96,7 @@ retry:
             int frametimes_count = 100;
             PB_MALLOC_ARRAY(request->frametimes, 100);
             for (int i = 0; i < frametimes_count; i++) {
-                 PB_MALLOC_SET(request->frametimes[i].time, abs(rand()));
+                 PB_MALLOC_SET(request->frametimes[i].time_usec, abs(rand()));
             }
 
             client_state->response = request;

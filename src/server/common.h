@@ -60,6 +60,13 @@ extern "C" {
 #define PB_MALLOC_ARRAY(field, count) do { const size_t __cc = (count); (field) = (__typeof__(field))calloc((__cc), sizeof(*(field))); field ## _count = (__cc); } while (0)
 #define PB_MALLOC_SET_STR(field, value) do { (field) = strdup(value); } while (0)
 
+// This is for use with 'optional' non-pointer fields.
+#define PB_SET(obj, field, value) do { (obj->has_ ## field) = 1; obj->field = value; } while (0)
+#define PB_SET_STR(obj, field, value) do { if (obj->has_ ## field) { free(obj->field); }; const char* __value = (value); if (__value) { (obj->has_ ## field) = 1; (obj->field) = strdup(__value); } while (0)
+#define PB_CLEAR(obj, field) do { if (obj->has_ ## field) { (has_ ## field) = 0; } } while (0)
+#define PB_CLEAR_STR(obj, field) do { if (obj->has_ ## field) { free(obj->field); (obj->has_ ## field) = 0; (obj->field) = NULL; } } while (0)
+
+// These are helpers for merging from one message to another.
 #define PB_MAYBE_UPDATE(to, from) do { \
   if (from) { \
      if (!(to)) { \
@@ -78,6 +85,8 @@ extern "C" {
   } \
 } while (0)
 
+// This is a conditional on FT_POINTER fields. If field is not set it returns
+// false.
 #define PB_IF(field, value) ((field) && *(field) == (value))
 
 
@@ -184,10 +193,14 @@ void client_state_cleanup(struct ClientState *client_state) COLD;
 // Used internally in client_connect in the server.
 int set_nonblocking(int fd) MUST_USE_RESULT COLD;
 
-//int protocol_receive(struct ClientState *client_state, int(*request_handler)(const Message*, void*), void *request_handler_state);
+//int protocol_receive(struct ClientState *client_state,
+//                     int(*request_handler)(const Message*, void*),
+//                     void *request_handler_state);
 //int protocol_send(struct ClientState *client_state);
 
-int use_fd(struct ClientState *client_state, int(*request_handler)(const Message*, void*), void *request_handler_state) MUST_USE_RESULT;
+int use_fd(struct ClientState *client_state,
+           int(*request_handler)(const Message*, void*),
+           void *request_handler_state) MUST_USE_RESULT;
 
 // Any parameter can be NULL, but to be useful, client_state should be not NULL.
 // If message_handler is NULL, messages from other side will be ignored.
