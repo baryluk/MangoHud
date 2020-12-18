@@ -35,7 +35,8 @@
 
 #include "common.h"
 
-
+// Helper for setting values in protobuf by pointer.
+// Crude, but works.
 template<typename T>
 inline T* a(const T&& value) {
     T* ptr = (T*)malloc(sizeof(T));
@@ -43,24 +44,29 @@ inline T* a(const T&& value) {
     return ptr;
 }
 
-// This is per client.
-struct ServerState {
-    int server_states_index;  // Index in `server_states` vector.
+
+struct PerClientServerState {
+    int global_server_states_index;  // Index in `GlobalServerState::server_states` vector.
 
     struct RpcClientState rpc_client_state;
 
     Message recent_state;
 };
 
+struct GlobalServerState {
+    // TODO(baryluk): Maybe make it own all the elements,
+    //     std::vector<PerClientServerState> per_client_server_states{};
+    std::vector<PerClientServerState*> per_client_server_states{};
+    bool server_shutdown = false;
+};
+
 struct RequestContext {
     // Server state assosciated with particular client.
-    struct ServerState *server_state;
+    struct PerClientServerState *per_client_server_state;
 
-    // All server states.
-    //
     // We want to be able to access all the other clients easily
     // to server GUI type client.
-    std::vector<ServerState*> *all_server_states;
+    struct GlobalServerState *global_server_state;
 };
 
 // Returns hostname aka nodename from gethostname or uname.
@@ -88,17 +94,17 @@ static char* get_myhostname() {
 }
 
 static int prepare_gui_response(Message* response, struct RequestContext *const context) {
-    assert(PB_IF(context->server_state->recent_state.client_type, Message_ClientType_GUI));
+    assert(PB_IF(context->per_client_server_state->recent_state.client_type, Message_ClientType_GUI));
 
     response->nodename = get_myhostname();  // Not PB_MALLOC_SET_STR!
 
     std::vector<Message> sub_responses;
 
-    for (const auto& other_server_state : *(context->all_server_states)) {
-        if (context->server_state->server_states_index == other_server_state->server_states_index) {
+    for (const auto& other_per_client_server_state : context->global_server_state->per_client_server_states) {
+        if (context->per_client_server_state->global_server_states_index == other_per_client_server_state->global_server_states_index) {
             continue;
         }
-        if (PB_IF(other_server_state->recent_state.client_type, Message_ClientType_GUI)) {
+        if (PB_IF(other_per_client_server_state->recent_state.client_type, Message_ClientType_GUI)) {
             continue;
         }
 
@@ -110,7 +116,7 @@ static int prepare_gui_response(Message* response, struct RequestContext *const 
         // connected to server on local machine only).
         PB_MALLOC_SET_STR(sub_response.nodename, response->nodename);
 
-        const Message* const recent_state = &(other_server_state->recent_state);
+        const Message* const recent_state = &(other_per_client_server_state->recent_state);
 
         // This would be so easier if the https://github.com/nanopb/nanopb/issues/173
         // was addressed.
@@ -153,14 +159,21 @@ static int prepare_gui_response(Message* response, struct RequestContext *const 
     return 0;
 }
 
+static struct PerClientServerState* find_server_state_for_client(struct GlobalServerState* global_server_state, const Message *const message) {
+    struct PerClientServerState* server_state_for_client = NULL;
+
+    return server_state_for_client;
+}
+
+
 static int server_request_handler(const Message* const request, void* my_state) {
     // This is a bit circular, and not nice design, but should work.
     struct RequestContext *const context = (struct RequestContext*)my_state;
 
-    struct ServerState *const server_state = context->server_state;
-    assert(server_state != NULL);
+    struct PerClientServerState *const per_client_server_state = context->per_client_server_state;
+    assert(per_client_server_state != NULL);
 
-    Message *const recent_state = &(server_state->recent_state);
+    Message *const recent_state = &(per_client_server_state->recent_state);
 
     // Debugging / sanity checks.
     // assert(server_state->client_state.connected);
@@ -245,10 +258,17 @@ static int server_request_handler(const Message* const request, void* my_state) 
     //    fprintf(stderr, "   frame: %" PRIu32 "\n", frametime);
     //}
 
+    // GUI can send back `client` with update config stuff (i.e. toggle HUD).
+    if (request->clients && request->clients_count) {
+        for (int i = 0; i < request->clients_count; i++) {
+             struct PerClientServerState *per_client_server_state_for_client = find_server_state_for_client(context->global_server_state, &(request->clients[i]));
+        }
+    }
+
     // Be very careful what you are doing here.
     // Don't mess with client_state, only set response if it is NULL.
     // Don't touch anything else (even reading).
-    struct RpcClientState *rpc_client_state = &(server_state->rpc_client_state);
+    struct RpcClientState *rpc_client_state = &(per_client_server_state->rpc_client_state);
     if (rpc_client_state->response == NULL) {
         Message* response = (Message*)calloc(1, sizeof(Message));
         rpc_client_state->response = response;
@@ -268,14 +288,14 @@ static int server_request_handler(const Message* const request, void* my_state) 
     return 0;
 }
 
-// TODO(baryluk): Move this to ServerState.
-static bool server_shutdown = false;
+// There is no way around using some global variable with signal handlers.
+static struct GlobalServerState *global_server_state_for_handler;
 
 static void sigint_handler(int sig, siginfo_t *info, void *ucontext) {
-    server_shutdown = true;
+    global_server_state_for_handler->server_shutdown = true;
 }
 
-static int loop() {
+static int loop(struct GlobalServerState* global_server_state) {
     // Create local socket.
 
 retry_unix_socket:
@@ -454,9 +474,7 @@ retry_tcp_bind:
     }
     }
 
-    std::vector<struct ServerState*> server_states;
-
-    while (!server_shutdown) {
+    while (!global_server_state->server_shutdown) {
         struct epoll_event events[MAX_EVENTS];
 
         const int nfds = epoll_pwait(epollfd, events, MAX_EVENTS, /*(int)timeout_ms=*/-1, /*sigmask*/NULL);
@@ -576,35 +594,36 @@ retry_tcp_bind:
                     goto error_1;
                 }
 
-                struct ServerState *const server_state = (struct ServerState*)calloc(1, sizeof(struct ServerState));
-                // struct ServerState *const server_state = (struct ServerState*)malloc(sizeof(struct ServerState));
-                // memset(server_state, 0, sizeof(struct ServerState));
+                struct PerClientServerState *const per_client_server_state = (struct PerClientServerState*)calloc(1, sizeof(struct PerClientServerState));
+                // struct ServerState *const per_client_server_state = (struct PerClientServerState*)malloc(sizeof(struct PerClientServerState));
+                // memset(per_client_server_state, 0, sizeof(struct PerClientServerState));
 
-                struct RpcClientState *const rpc_client_state = &(server_state->rpc_client_state);
+                struct RpcClientState *const rpc_client_state = &(per_client_server_state->rpc_client_state);
 
                 rpc_client_state->client_type = 1;
                 rpc_client_state->fd = data_socket;
                 rpc_client_state->fsocket = fsocket;
                 rpc_client_state->connected = 1;
 
-                server_state->recent_state = Message_init_zero;
+                per_client_server_state->recent_state = Message_init_zero;
 
-                server_state->server_states_index = server_states.size();
-                server_states.push_back(server_state);
+                per_client_server_state->global_server_states_index = global_server_state->per_client_server_states.size();
+
+                global_server_state->per_client_server_states.push_back(per_client_server_state);
 
                 struct epoll_event ev;
                 // Note that is not needed to ever set EPOLLERR or EPOLLHUP,
                 // they will always be reported.
                 ev.events = EPOLLIN | EPOLLET;
                 ev.data.fd = data_socket;
-                ev.data.ptr = (void*)server_state;
+                ev.data.ptr = (void*)per_client_server_state;
                 if (epoll_ctl(epollfd, EPOLL_CTL_ADD, data_socket, &ev) == -1) {
                     perror("epoll_ctl: data_socket");
                     exit(EXIT_FAILURE);
                 }
                 }
 
-                fprintf(stderr, "Connected clients: %zu\n", server_states.size());
+                fprintf(stderr, "Connected clients: %zu\n", global_server_state->per_client_server_states.size());
 
                 continue;
 error_1:
@@ -619,13 +638,13 @@ error_1:
 
             } else {
                 // Data from client.
-                struct ServerState *const server_state = (struct ServerState*)events[n].data.ptr;
-                assert(server_state != NULL);
-                struct RpcClientState *const rpc_client_state = &(server_state->rpc_client_state);
+                struct PerClientServerState *const per_client_server_state = (struct PerClientServerState*)events[n].data.ptr;
+                assert(per_client_server_state != NULL);
+                struct RpcClientState *const rpc_client_state = &(per_client_server_state->rpc_client_state);
 
                 struct RequestContext request_context = {0};
-                request_context.server_state = server_state;
-                request_context.all_server_states = &server_states;
+                request_context.per_client_server_state = per_client_server_state;
+                request_context.global_server_state = global_server_state;
 
                 // use_fd is fine to be called even if we got EPOLLERR or EPOLLHUP,
                 // as rpc_client_use_fd is smart to handle properly read and
@@ -644,31 +663,31 @@ error_1:
                     //    perror("fclose");
                     //}
 
-                    int i = server_state->server_states_index;
-                    assert(server_states.size() > 0);
-                    assert(server_states[i] == server_state);
-                    struct ServerState *other_server_state = server_states.back();
-                    if (other_server_state != server_state) {
-                        assert(server_states.size() >= 1);
-                        other_server_state->server_states_index = i;
-                        server_states[i] = other_server_state;
+                    int i = per_client_server_state->global_server_states_index;
+                    assert(global_server_state->per_client_server_states.size() > 0);
+                    assert(global_server_state->per_client_server_states[i] == per_client_server_state);
+                    struct PerClientServerState *other_per_client_server_state = global_server_state->per_client_server_states.back();
+                    if (other_per_client_server_state != per_client_server_state) {
+                        assert(global_server_state->per_client_server_states.size() >= 1);
+                        other_per_client_server_state->global_server_states_index = i;
+                        global_server_state->per_client_server_states[i] = other_per_client_server_state;
                     }
-                    server_states.pop_back();
-                    fprintf(stderr, "New server_states vector size: %zu\n", server_states.size());
+                    global_server_state->per_client_server_states.pop_back();
+                    fprintf(stderr, "New server_states vector size: %zu\n", global_server_state->per_client_server_states.size());
 
                     rpc_client_state_cleanup(rpc_client_state);
                     rpc_client_state->connected = 0;
 
-                    pb_release(Message_fields, &(server_state->recent_state));
+                    pb_release(Message_fields, &(per_client_server_state->recent_state));
 
-                    // free(server_state->client_state);
-                    free(server_state);
+                    // free(per_client_server_state->client_state);
+                    free(per_client_server_state);
                 }
             }
         }
     }
 
-    if (server_shutdown) {
+    if (global_server_state->server_shutdown) {
         fprintf(stderr, "Received SIGINT (^C), shuting down\n");
     }
 
@@ -678,16 +697,17 @@ error_1:
         perror("close: epollfd");
     }
 
-    for (size_t i = 0; i < server_states.size(); i++) {
+    for (size_t i = 0; i < global_server_state->per_client_server_states.size(); i++) {
         printf("Closing %zu\n", i);
-        rpc_client_state_cleanup(&(server_states[i]->rpc_client_state));
+        struct PerClientServerState *const per_client_server_state = global_server_state->per_client_server_states[i];
+        rpc_client_state_cleanup(&(per_client_server_state->rpc_client_state));
 
-        pb_release(Message_fields, &(server_states[i]->recent_state));
+        pb_release(Message_fields, &(per_client_server_state->recent_state));
 
-        // free(server_states[i]->client_state);
-        free(server_states[i]);
+        // free(per_client_server_state->client_state);
+        free(per_client_server_state);
     }
-    server_states.clear();
+    global_server_state->per_client_server_states.clear();
 
 close_tcp_socket:
     if (close(connection_tcp_socket) != 0) {
@@ -712,7 +732,10 @@ close_unix_socket:
 
 
 int main(int argc, const char** argv) {
-    server_shutdown = false;
+    struct GlobalServerState global_server_state;
+    global_server_state.server_shutdown = false;
+
+    global_server_state_for_handler = &global_server_state;
 
     struct sigaction act_sigint = {0};
     act_sigint.sa_sigaction = &sigint_handler;
@@ -732,7 +755,7 @@ int main(int argc, const char** argv) {
         return 1;
     }
 
-    int ret = loop();
+    int ret = loop(&global_server_state);
 
     if (ret != 0) {
         errno = ret;
