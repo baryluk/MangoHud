@@ -68,7 +68,6 @@ def recv(sock):
     return msg
 
 thread = None
-stop = False
 
 stop_ev = threading.Event()
 
@@ -80,8 +79,8 @@ class ClientWidget(Gtk.Grid):
     #def __init__(self, **kwargs):
     #    super().__init__(**kwargs)
 
-    #@Gtk.Template.Callback('clicked')
-    #def on_button_clicked(self, widget):
+    #@Gtk.Template.Callback('hud_toggle_clicked')
+    #def on_hud_toggle_button_clicked(self, widget):
     #     pass
 
     fps = Gtk.Template.Child('fps')
@@ -134,7 +133,7 @@ def handle_message(msg):
 
 def thread_loop(sock):
     protocol_version_warning_shown = False
-    while not stop and not stop_ev.is_set():
+    while not stop_ev.is_set():
         msg = pb.Message(protocol_version=1, client_type=pb.Message.ClientType.GUI)
         send(sock, msg)
 
@@ -146,7 +145,9 @@ def thread_loop(sock):
                 print(f"Warning: Server speaks newer protocol_version {msg.protocol_version}, than supported by this app ({SUPPORTED_PROTOCOL_VERSION}).\nCrashes or missing functionality expected!\nPlease upgrade!");
                 protocol_version_warnings_shown = True
 
-        handle_message(msg)
+        # Process message in the main thread, as we will be updating GUI
+        # while we process it.
+        GLib.idle_add(handle_message, msg)
 
         # Sleep less if 50ms laready passed from previous contact.
         # Sleep more if there are no clients, to conserve CPU / battery.
@@ -159,11 +160,11 @@ def thread_loop_start(sock):
     thread_loop(sock)
 
 def connection_thread():
-    global thread, stop, stop_ev
+    global thread, stop_ev
     status = "Connecting"
     reconnect = True
     reconnect_delay = 1.0
-    while reconnect and not stop and not stop_ev.is_set():
+    while reconnect and not stop_ev.is_set():
         try:
             if True:
                 addresses = socket.getaddrinfo(ADDRESS[0], ADDRESS[1], proto=socket.IPPROTO_TCP)
@@ -205,7 +206,7 @@ def connection_thread():
             raise e
         finally:
             print(f"Disconnected: status = {status}")
-            if not stop and not stop_ev.is_set():
+            if not stop_ev.is_set():
                 reconnect_time = time.time() + reconnect_delay
                 while time.time() < reconnect_time:
                     reconnect_togo = max(0.0, reconnect_time - time.time())
@@ -220,13 +221,11 @@ def connection_thread():
                 else:
                     GLib.idle_add(connect_button.set_label, "Connect")
     thread = None
-    stop = False
     stop_ev.clear()
 
 def connect_clicked(button):
     global thread
     if connect_button.get_label() == "Disconnect":
-        stop = True
         stop_ev.set()
         return
 
@@ -244,7 +243,7 @@ def connect_clicked(button):
     thread.start()
 
 handlers = {
-  "connect_clicked": connect_clicked,
+    "connect_clicked": connect_clicked,
 }
 
 builder.connect_signals(handlers)
@@ -254,12 +253,11 @@ window = builder.get_object("window_main")
 window.connect("destroy", Gtk.main_quit)
 
 try:
-  window.show_all()
+    window.show_all()
 
-  # Auto connect on startup.
-  connect_clicked(connect_button)
+    # Auto connect on startup.
+    connect_clicked(connect_button)
 
-  Gtk.main()
+    Gtk.main()
 finally:
-  stop = True
-  stop_ev.set()
+    stop_ev.set()
