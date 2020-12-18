@@ -10,20 +10,6 @@
 #endif
 
 /* Enum definitions */
-typedef enum _TimestampSource {
-    TimestampSource_MONOTONIC_RAW = 0,
-    TimestampSource_MONOTONIC = 1,
-    TimestampSource_MONOTONIC_COARSE = 2,
-    TimestampSource_BOOTTIME = 3,
-    TimestampSource_REALTIME = 4,
-    TimestampSource_REALTIME_COARSE = 5,
-    TimestampSource_TAI = 6,
-    TimestampSource_GETTIMEOFDAY_UTC = 7,
-    TimestampSource_GETTIMEOFDAY_LOCAL = 8,
-    TimestampSource_TIME = 9,
-    TimestampSource_WINDOWS_QueryPerformanceCounter = 10
-} TimestampSource;
-
 typedef enum _Message_ClientType {
     Message_ClientType_APP = 0,
     Message_ClientType_SERVER = 1,
@@ -34,8 +20,25 @@ typedef enum _Architecture_OS {
     Architecture_OS_LINUX = 0,
     Architecture_OS_FREEBSD = 1,
     Architecture_OS_MACOS = 2,
-    Architecture_OS_WINDOWS = 3
+    Architecture_OS_WINDOWS = 3,
+    Architecture_OS_ANDROID = 4,
+    Architecture_OS_REACT_OS = 5,
+    Architecture_OS_HAIKU = 6,
+    Architecture_OS_GNU_HURD = 7
 } Architecture_OS;
+
+typedef enum _Timestamp_TimestampSource {
+    Timestamp_TimestampSource_MONOTONIC_RAW = 0,
+    Timestamp_TimestampSource_MONOTONIC = 1,
+    Timestamp_TimestampSource_MONOTONIC_COARSE = 2,
+    Timestamp_TimestampSource_BOOTTIME = 3,
+    Timestamp_TimestampSource_REALTIME = 4,
+    Timestamp_TimestampSource_REALTIME_COARSE = 5,
+    Timestamp_TimestampSource_TAI = 6,
+    Timestamp_TimestampSource_GETTIMEOFDAY_UTC = 7,
+    Timestamp_TimestampSource_TIME = 9,
+    Timestamp_TimestampSource_WINDOWS_QueryPerformanceCounter = 10
+} Timestamp_TimestampSource;
 
 /* Struct definitions */
 typedef struct _Alive {
@@ -290,23 +293,23 @@ typedef struct _RpcMessage {
 } RpcMessage;
 
 typedef struct _Timestamp {
-    char *clock_source;
+    Timestamp_TimestampSource *clock_source;
     uint64_t *timestamp_usec;
 } Timestamp;
 
 
 /* Helper constants for enums */
-#define _TimestampSource_MIN TimestampSource_MONOTONIC_RAW
-#define _TimestampSource_MAX TimestampSource_WINDOWS_QueryPerformanceCounter
-#define _TimestampSource_ARRAYSIZE ((TimestampSource)(TimestampSource_WINDOWS_QueryPerformanceCounter+1))
-
 #define _Message_ClientType_MIN Message_ClientType_APP
 #define _Message_ClientType_MAX Message_ClientType_GUI
 #define _Message_ClientType_ARRAYSIZE ((Message_ClientType)(Message_ClientType_GUI+1))
 
 #define _Architecture_OS_MIN Architecture_OS_LINUX
-#define _Architecture_OS_MAX Architecture_OS_WINDOWS
-#define _Architecture_OS_ARRAYSIZE ((Architecture_OS)(Architecture_OS_WINDOWS+1))
+#define _Architecture_OS_MAX Architecture_OS_GNU_HURD
+#define _Architecture_OS_ARRAYSIZE ((Architecture_OS)(Architecture_OS_GNU_HURD+1))
+
+#define _Timestamp_TimestampSource_MIN Timestamp_TimestampSource_MONOTONIC_RAW
+#define _Timestamp_TimestampSource_MAX Timestamp_TimestampSource_WINDOWS_QueryPerformanceCounter
+#define _Timestamp_TimestampSource_ARRAYSIZE ((Timestamp_TimestampSource)(Timestamp_TimestampSource_WINDOWS_QueryPerformanceCounter+1))
 
 
 #ifdef __cplusplus
@@ -706,7 +709,7 @@ X(a, POINTER,  SINGULAR, STRING,   keybinding,        1)
 #define Config_Key_DEFAULT NULL
 
 #define Timestamp_FIELDLIST(X, a) \
-X(a, POINTER,  SINGULAR, STRING,   clock_source,      1) \
+X(a, POINTER,  SINGULAR, UENUM,    clock_source,      1) \
 X(a, POINTER,  SINGULAR, UINT64,   timestamp_usec,    2)
 #define Timestamp_CALLBACK NULL
 #define Timestamp_DEFAULT NULL

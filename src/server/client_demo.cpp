@@ -34,6 +34,7 @@
 #include <cassert>
 #include <arpa/inet.h>
 #include <time.h>
+#include <sys/time.h>  // gettimeofday
 
 #define PB_ENABLE_MALLOC
 #include <pb.h>
@@ -59,7 +60,7 @@ void operator delete[] (void* ptr) noexcept {
 }
 
 static int client_response_handler(const Message* const message, void* my_state) {
-    struct ClientState *client_state = (struct ClientState *)(my_state);
+    struct RpcClientState *rpc_client_state = (struct RpcClientState *)(my_state);
 
     if (message->protocol_version) {
         fprintf(stderr, "got response: %d\n", *(message->protocol_version));
@@ -71,18 +72,19 @@ static int loop() {
 retry:
     fprintf(stderr, "Connecting to server\n");
 
-    struct ClientState client_state_ = {0};
-    struct ClientState *client_state = &client_state_;
+    struct RpcClientState rpc_client_state_ = {0};
+    struct RpcClientState *rpc_client_state = &rpc_client_state_;
 
-    if (client_connect(&client_state_)) {
+    if (rpc_client_connect(&rpc_client_state_)) {
         goto error_1;
     }
 
     {
+    uint32_t frame_counter = 1234;
     int loops = 0;
 
     for (;;) {
-        if (client_state->response == NULL) {
+        if (rpc_client_state->response == NULL) {
             Message *request = (Message*)calloc(1, sizeof(Message));
             PB_MALLOC_SET(request->protocol_version, 1);
             PB_MALLOC_SET(request->client_type, Message_ClientType_APP);
@@ -91,20 +93,36 @@ retry:
             PB_MALLOC_SET(request->fps, 50.0f + 20.0f*drand48());
             fprintf(stderr, "fps: %f\n", *(request->fps));
 
-            PB_MALLOC_SET_STR(request->program_name, "client_demo");
-
-            int frametimes_count = 100;
-            PB_MALLOC_ARRAY(request->frametimes, 100);
-            for (int i = 0; i < frametimes_count; i++) {
-                 PB_MALLOC_SET(request->frametimes[i].time_usec, abs(rand()));
+            {
+                 struct timeval tv;
+                 gettimeofday(&tv, /*tz=*/NULL);
+                 PB_MALLOC_SET(request->timestamp, Timestamp_init_zero);
+                 PB_MALLOC_SET(request->timestamp->clock_source, Timestamp_TimestampSource_GETTIMEOFDAY_UTC);
+                 PB_MALLOC_SET(request->timestamp->timestamp_usec, tv.tv_sec*1000000uLL + tv.tv_usec);
             }
 
-            client_state->response = request;
+
+            PB_MALLOC_SET_STR(request->program_name, "client_demo");
+
+            const int frametimes_count = 15;
+            PB_MALLOC_ARRAY(request->frametimes, frametimes_count);
+            for (int i = 0; i < frametimes_count; i++) {
+                 const uint32_t n = frame_counter++;
+                 {
+                 struct timeval tv;
+                 gettimeofday(&tv, /*tz=*/NULL);
+                 PB_MALLOC_SET(request->frametimes[i].timestamp_usec, tv.tv_sec*1000000uLL + tv.tv_usec);
+                 }
+                 PB_MALLOC_SET(request->frametimes[i].index, n);
+                 PB_MALLOC_SET(request->frametimes[i].time_usec, abs(rand() / 1000));
+            }
+
+            rpc_client_state->response = request;
         }
 
         int retries = 0;
         int ret = -1;
-        while ((ret = use_fd(client_state, &client_response_handler, (void*)(client_state))) == 0) {
+        while ((ret = rpc_client_use_fd(rpc_client_state, &client_response_handler, (void*)(rpc_client_state))) == 0) {
             retries++;
             if (retries >= 3) {
                 break;
@@ -132,19 +150,19 @@ retry:
     }  // for (;;)
 
     fprintf(stderr, "output of infinite loop\n");
-    client_state_cleanup(client_state);
+    rpc_client_state_cleanup(rpc_client_state);
 
     }  // scoping block to silence goto warnings.
 
 error_1:
     fprintf(stderr, "error_1 condition\n");
 
-    if (client_state->fsocket) {
-        if (fclose(client_state->fsocket) != 0) {
+    if (rpc_client_state->fsocket) {
+        if (fclose(rpc_client_state->fsocket) != 0) {
             perror("close");
         }
     }
-    client_state->connected = 0;
+    rpc_client_state->connected = 0;
 
     return 0;
 }

@@ -129,6 +129,12 @@ message Architecture {
     FREEBSD = 1;
     MACOS = 2;
     WINDOWS = 3;
+    ANDROID = 4;
+    REACT_OS = 5;
+    HAIKU = 6;
+    GNU_HURD = 7;
+    // CHROME_OS = 8;
+    // SOLARIS = 9; // + OpenSolaris, Nexenta, ...
   }
 
   OS os = 1;
@@ -219,26 +225,26 @@ message Config {
   Key reload_cfg = 7;
 }
 
-enum TimestampSource {
-  // clock_gettime clocks
-  MONOTONIC_RAW = 0;
-  MONOTONIC = 1;
-  MONOTONIC_COARSE = 2;
-  BOOTTIME = 3;
-  REALTIME = 4;
-  REALTIME_COARSE = 5;
-  TAI = 6;
-  // gettimeofday, UTC
-  GETTIMEOFDAY_UTC = 7;
-  GETTIMEOFDAY_LOCAL = 8;
-  // time
-  TIME = 9;
-  // QueryPerformanceCounter
-  WINDOWS_QueryPerformanceCounter = 10;
-}
 
 message Timestamp {
-  string clock_source = 1;
+  enum TimestampSource {
+    // clock_gettime clocks
+    MONOTONIC_RAW = 0;
+    MONOTONIC = 1;
+    MONOTONIC_COARSE = 2;
+    BOOTTIME = 3;
+    REALTIME = 4;
+    REALTIME_COARSE = 5;
+    TAI = 6;
+    // gettimeofday, UTC. Second since epoch (similar to REALTIME).
+    GETTIMEOFDAY_UTC = 7;
+    // GETTIMEOFDAY_LOCAL = 8;
+    // time
+    TIME = 9;
+    // QueryPerformanceCounter
+    WINDOWS_QueryPerformanceCounter = 10;
+  }
+  TimestampSource clock_source = 1;
   uint64 timestamp_usec = 2;
 }
 

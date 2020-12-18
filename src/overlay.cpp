@@ -49,8 +49,11 @@ static int mango_message_generator(Message* message, void* my_state) {
        message->wine_version = strndup(wine_version.data(), wine_version.length());
    }
 
-   PB_MALLOC_SET(message->timestamp, Timestamp_init_zero);
-   PB_MALLOC_SET(message->timestamp->clock_source, TimestampSource_MONOTONIC);
+   PB_MALLOC_SET(message->architecture, Architecture_init_zero);
+   PB_MALLOC_SET(message->architecture->os, Architecture_OS_LINUX);
+
+   PB_MALLOC_SET(message->timestamp, Timestamp_Timestamp_init_zero);
+   PB_MALLOC_SET(message->timestamp->clock_source, Timestamp_TimestampSource_MONOTONIC);
    PB_MALLOC_SET(message->timestamp->timestamp, now);
 
    // PB_MALLOC_SET(message->app_uptime_msec, );  // In Linux there is no way to really find this out.
@@ -115,7 +118,6 @@ message FrameTime {
    PB_MALLOC_SET(message->last_fps_update_usec, sw_stats->last_fps_update);  // uint64_t
    // PB_MALLOC_SET(message->hud->main_window_pos_x, sw_stats->main_window_pos.x);  // ImVec2
    // PB_MALLOC_SET(message->hud->main_window_pos_y, sw_stats->main_window_pos.y);
-
 
    // params.fps_sampling_period
 

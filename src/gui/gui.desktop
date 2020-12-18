@@ -1,0 +1,15 @@
+[Desktop Entry]
+Name=MangoHud GUI
+#GenericName=mangohud
+GenericName=FPS monitoring
+Comment[en_GB]=Access local and remote applications for FPS and hardware monitoring
+Comment=Access local and remote applications for FPS and hardware monitoring
+Exec=/usr/bin/mangohud-gui
+# Icon=....
+Terminal=false
+Type=Application
+# StartupNotify=true
+Categories=GTK;Games;System;HardwareSettings;Network;
+Keywords=games;linux;system;hardware;cpu;fps;overlay;frequency;freq;memory;ram;board;temperature;temp;clock;sensors;devices;pci;display;benchmark;test;
+#Version=1.0
+X-Desktop-File-Install-Version=0.26

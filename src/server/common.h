@@ -104,14 +104,14 @@ extern struct sockaddr_un _sockaddr_un_sizecheck;
 #define UNIX_PATH_MAX sizeof(_sockaddr_un_sizecheck.sun_path)
 #endif
 
-// Client state. It is used by both server and 'client', for tracking various
+// RPC Client state. It is used by both server and 'client', for tracking various
 // things.
 //
 // Applications (especially clients), should not be reading or writing, any
 // of the state, unless it is for debug / tracing purposes.
 //
 // Use provided functions instead.
-struct ClientState {
+struct RpcClientState {
     int client_type;  // 0 - server, 1 - app, 2 - gui.
 
     uint64_t next_retry;
@@ -186,40 +186,41 @@ struct ClientState {
     int send_period;
 };
 
-int client_connect(struct ClientState *client_state) MUST_USE_RESULT COLD;
+int rpc_client_connect(struct RpcClientState *rpc_client_state) MUST_USE_RESULT COLD;
 
-void client_state_cleanup(struct ClientState *client_state) COLD;
+void rpc_client_state_cleanup(struct RpcClientState *rpc_client_state) COLD;
 
 // Used internally in client_connect in the server.
 int set_nonblocking(int fd) MUST_USE_RESULT COLD;
 
-//int protocol_receive(struct ClientState *client_state,
+//int protocol_receive(struct RpcClientState *rpc_client_state,
 //                     int(*request_handler)(const Message*, void*),
 //                     void *request_handler_state);
-//int protocol_send(struct ClientState *client_state);
+//int protocol_send(struct RpcClientState *rpc_client_state);
 
-int use_fd(struct ClientState *client_state,
-           int(*request_handler)(const Message*, void*),
-           void *request_handler_state) MUST_USE_RESULT;
+int rpc_client_use_fd(struct RpcClientState *rpc_client_state,
+                      int(*request_handler)(const Message*, void*),
+                      void *request_handler_state) MUST_USE_RESULT;
 
-// Any parameter can be NULL, but to be useful, client_state should be not NULL.
-// If message_handler is NULL, messages from other side will be ignored.
+// Any parameter can be NULL, but to be useful,
+// `rpc_client_state` should be not NULL.
+// If `message_handler` is NULL, messages from other side will be ignored.
 //
 // In general this function is safe and fast to call, even if there is nothing
 // to send or receive, or the client is not connected.
 //
-// Calls to message_generator will be throttled, and not necassirly
+// Calls to `message_generator` will be throttled, and not necassirly
 // invoked, even if we are ready to send.
 //
 // Message pointer passed to `message_handler` is only valid, during
 // the call of `message_handler`. The message pointer and all the other
 // pointers referenced transitively will be invalid after `message_handler`
 // finishes. Make copies of data, if needed.
-void client_maybe_communicate(struct ClientState *client_state,
-                              int(*message_generator)(Message*, void*),
-                              void *generator_state,
-                              int(*message_handler)(const Message*, void*),
-                              void *handler_state);
+void rpc_client_maybe_communicate(struct RpcClientState *rpc_client_state,
+                                  int(*message_generator)(Message*, void*),
+                                  void *generator_state,
+                                  int(*message_handler)(const Message*, void*),
+                                  void *handler_state);
 
 #undef MUST_USE_RESULT
 #undef COLD

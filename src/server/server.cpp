@@ -48,7 +48,7 @@ inline T* a(const T&& value) {
 struct ServerState {
     int server_states_index;  // Index in `server_states` vector.
 
-    struct ClientState client_state;
+    struct RpcClientState rpc_client_state;
 
     Message recent_state;
 };
@@ -133,7 +133,14 @@ static int server_request_handler(const Message* const request, void* my_state) 
 
     PB_MAYBE_UPDATE(recent_state->protocol_version, request->protocol_version);
     PB_MAYBE_UPDATE(recent_state->client_type, request->client_type);
-    PB_MAYBE_UPDATE(recent_state->timestamp, request->timestamp);
+    if (recent_state->render_info == NULL) {
+        PB_MALLOC_SET(recent_state->timestamp, Timestamp_init_zero);
+    }
+    if (request->timestamp) {
+        PB_MAYBE_UPDATE(recent_state->timestamp->clock_source, request->timestamp->clock_source);
+        PB_MAYBE_UPDATE(recent_state->timestamp->timestamp_usec, request->timestamp->timestamp_usec);
+    }
+
     uint64_t pid = 0;
     if (request->pid) {
         PB_MAYBE_UPDATE(recent_state->pid, request->pid);
@@ -145,59 +152,73 @@ static int server_request_handler(const Message* const request, void* my_state) 
             PB_MALLOC_SET(recent_state->render_info, RenderInfo_init_zero);
         }
         char* type = "unknown";
-        if (request->render_info && request->render_info->opengl && *request->render_info->opengl) {
+        const RenderInfo *const render_info = request->render_info;
+        if (render_info && render_info->opengl && *render_info->opengl) {
             type = "OpenGL";
-            PB_MAYBE_UPDATE(recent_state->render_info->opengl, request->render_info->opengl);
+            PB_MAYBE_UPDATE(recent_state->render_info->opengl, render_info->opengl);
         }
-        if (request->render_info && request->render_info->vulkan && *request->render_info->vulkan) {
+        if (render_info && render_info->vulkan && *render_info->vulkan) {
             type = "Vulkan";
-            PB_MAYBE_UPDATE(recent_state->render_info->vulkan, request->render_info->vulkan);
+            PB_MAYBE_UPDATE(recent_state->render_info->vulkan, render_info->vulkan);
+            PB_MAYBE_UPDATE(recent_state->render_info->vulkan_version_major, render_info->vulkan_version_major);
+            PB_MAYBE_UPDATE(recent_state->render_info->vulkan_version_minor, render_info->vulkan_version_minor);
+            PB_MAYBE_UPDATE(recent_state->render_info->vulkan_version_patch, render_info->vulkan_version_patch);
         }
         char* engine_name = "";
-        if (request->render_info && request->render_info->engine_name) {
-            engine_name = request->render_info->engine_name;
-            PB_MAYBE_UPDATE(recent_state->render_info->engine_name, request->render_info->engine_name);
+        if (render_info && render_info->engine_name) {
+            engine_name = render_info->engine_name;
+            PB_MAYBE_UPDATE_STR(recent_state->render_info->engine_name, render_info->engine_name);
         }
         char* driver_name = "";
-        if (request->render_info && request->render_info->driver_name) {
-            driver_name = request->render_info->driver_name;
-            PB_MAYBE_UPDATE(recent_state->render_info->driver_name, request->render_info->driver_name);
+        if (render_info && render_info->driver_name) {
+            driver_name = render_info->driver_name;
+            PB_MAYBE_UPDATE_STR(recent_state->render_info->driver_name, render_info->driver_name);
         }
 
         if (request->fps) {
-            PB_MAYBE_UPDATE(server_state->recent_state.fps, request->fps);
+            PB_MAYBE_UPDATE(recent_state->fps, request->fps);
             fprintf(stderr, "pid %9ld   fps: %.3f  name=%s  type=%s engine=%s driver=%s\n", pid, *request->fps, request->program_name, type, engine_name, driver_name);
         }
 
         PB_MAYBE_UPDATE_STR(recent_state->program_name, request->program_name);
+        PB_MAYBE_UPDATE_STR(recent_state->wine_version, request->wine_version);
     }
 
 
-    std::vector<uint32_t> frametimes;
+    //std::vector<uint32_t> frametimes;
     if (request->frametimes) {
         for (int i = 0; i < request->frametimes_count; i++) {
-            if (request->frametimes[i].time_usec) {
-               frametimes.push_back(*(request->frametimes[i].time_usec));
-            }
+            //if (request->frametimes[i].time_usec) {
+            //   //frametimes.push_back(*(request->frametimes[i].time_usec));
+            //}
+            //if (request->frametimes[i].index) {
+            //   //frametimes_index.push_back(*(request->frametimes[i].index));
+            //}
+            const uint64_t timestamp_usec = request->frametimes[i].timestamp_usec ? *(request->frametimes[i].timestamp_usec) : 0;
+            const uint32_t index = *(request->frametimes[i].index);
+            const uint32_t time_usec = *(request->frametimes[i].time_usec);
+            fprintf(stderr, "   frame %9d: %7" PRIu32 " us @ %10" PRIu64 "\n", index, time_usec, timestamp_usec);
         }
     }
-    for (auto& frametime : frametimes) {
-        fprintf(stderr, "   frame: %" PRIu32 "\n", frametime);
-    }
+    //for (auto& frametime : frametimes) {
+    //    fprintf(stderr, "   frame: %" PRIu32 "\n", frametime);
+    //}
 
     // Be very careful what you are doing here.
     // Don't mess with client_state, only set response if it is NULL.
     // Don't touch anything else (even reading).
-    struct ClientState *client_state = &(server_state->client_state);
-    if (client_state->response == NULL) {
+    struct RpcClientState *rpc_client_state = &(server_state->rpc_client_state);
+    if (rpc_client_state->response == NULL) {
         Message* response = (Message*)calloc(1, sizeof(Message));
-        client_state->response = response;
+        rpc_client_state->response = response;
 
         response->protocol_version = a<uint32_t>(1);
         response->client_type = a<Message_ClientType>(Message_ClientType_SERVER);
 
         if (PB_IF(request->client_type, Message_ClientType_GUI)) {
-            prepare_gui_response(response, context);
+            if (prepare_gui_response(response, context) != 0) {
+                return 1;  // Error.
+            }
         }
     } else {
         fprintf(stderr, "Can not respond, some response is already set!\n");
@@ -518,13 +539,12 @@ retry_tcp_bind:
                 // struct ServerState *const server_state = (struct ServerState*)malloc(sizeof(struct ServerState));
                 // memset(server_state, 0, sizeof(struct ServerState));
 
-                struct ClientState *const client_state = &(server_state->client_state);
+                struct RpcClientState *const rpc_client_state = &(server_state->rpc_client_state);
 
-                client_state->client_type = 1;
-                client_state->fd = data_socket;
-                client_state->fsocket = fsocket;
-                client_state->connected = 1;
-
+                rpc_client_state->client_type = 1;
+                rpc_client_state->fd = data_socket;
+                rpc_client_state->fsocket = fsocket;
+                rpc_client_state->connected = 1;
 
                 server_state->recent_state = Message_init_zero;
 
@@ -560,26 +580,26 @@ error_1:
                 // Data from client.
                 struct ServerState *const server_state = (struct ServerState*)events[n].data.ptr;
                 assert(server_state != NULL);
-                struct ClientState *const client_state = &(server_state->client_state);
+                struct RpcClientState *const rpc_client_state = &(server_state->rpc_client_state);
 
                 struct RequestContext request_context = {0};
                 request_context.server_state = server_state;
                 request_context.all_server_states = &server_states;
 
                 // use_fd is fine to be called even if we got EPOLLERR or EPOLLHUP,
-                // as use_fd is smart to handle properly read and write errors,
-                // including returning 0, or other errors.
+                // as rpc_client_use_fd is smart to handle properly read and
+                // write errors, including returning 0, or other errors.
                 if ((events[n].events & EPOLLERR) || (events[n].events & EPOLLHUP) ||
-                    use_fd(client_state, server_request_handler, (void*)(&request_context))) {
+                    rpc_client_use_fd(rpc_client_state, server_request_handler, (void*)(&request_context))) {
                     fprintf(stderr, "Fatal error during handling client. Disconnecting.\n");
                     struct epoll_event dummy_event = {0};
-                    if (epoll_ctl(epollfd, EPOLL_CTL_DEL, client_state->fd, &dummy_event) == -1) {
+                    if (epoll_ctl(epollfd, EPOLL_CTL_DEL, rpc_client_state->fd, &dummy_event) == -1) {
                         perror("epoll_ctl: removing data_socket");
                         exit(EXIT_FAILURE);
                     }
 
                     // fclose is now power of client_state_cleanup.
-                    //if (fclose(client_state->fsocket)) {
+                    //if (fclose(rpc_client_state->fsocket)) {
                     //    perror("fclose");
                     //}
 
@@ -595,8 +615,8 @@ error_1:
                     server_states.pop_back();
                     fprintf(stderr, "New server_states vector size: %ld\n", server_states.size());
 
-                    client_state_cleanup(client_state);
-                    client_state->connected = 0;
+                    rpc_client_state_cleanup(rpc_client_state);
+                    rpc_client_state->connected = 0;
 
                     pb_release(Message_fields, &(server_state->recent_state));
 
@@ -619,7 +639,7 @@ error_1:
 
     for (size_t i = 0; i < server_states.size(); i++) {
         printf("Closing %ld\n", i);
-        client_state_cleanup(&(server_states[i]->client_state));
+        rpc_client_state_cleanup(&(server_states[i]->rpc_client_state));
 
         pb_release(Message_fields, &(server_states[i]->recent_state));
 
