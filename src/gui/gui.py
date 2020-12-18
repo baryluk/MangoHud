@@ -127,7 +127,15 @@ def handle_message(msg):
         for key, (client_widget, client) in known_clients.items():
             GLib.idle_add(client_widget.fps.set_text, f"{client.fps:.3f}")
             GLib.idle_add(client_widget.app_name.set_text, f"{client.program_name}")
-            GLib.idle_add(client_widget.api.set_text, f"pid {client.pid}")
+            if client.render_info and client.render_info.opengl:
+                opengl = "OpenGL ES" if client.render_info.opengl_is_gles else "OpenGL"
+                opengl += f" {client.render_info.opengl_version_major}.{client.render_info.opengl_version_minor}"
+                GLib.idle_add(client_widget.api.set_text, opengl)
+            elif client.render_info and client.render_info.vulkan:
+                vulkan = f"Vulkan {client.render_info.vulkan_version_major}.{client.render_info.vulkan_version_minor}.{client.render_info.vulkan_version_patch}"
+                GLib.idle_add(client_widget.api.set_text, vulkan)
+            else:
+                GLib.idle_add(client_widget.api.set_text, f"pid {client.pid}")
             # TODO(baryluk): Garbage collect old clients.
 
 
@@ -138,7 +146,7 @@ def thread_loop(sock):
         send(sock, msg)
 
         msg = recv(sock)
-        #print(msg)
+        print(msg)
 
         if (msg.protocol_version and msg.protocol_version > SUPPORTED_PROTOCOL_VERSION):
             if not protocol_version_warnings_shown:

@@ -110,11 +110,37 @@ static int prepare_gui_response(Message* response, struct RequestContext *const 
         // connected to server on local machine only).
         PB_MALLOC_SET_STR(sub_response.nodename, response->nodename);
 
+        const Message* const recent_state = &(other_server_state->recent_state);
+
+        // This would be so easier if the https://github.com/nanopb/nanopb/issues/173
+        // was addressed.
+
         // Populate most recent stats for each client.
-        PB_MAYBE_UPDATE(sub_response.uid, other_server_state->recent_state.uid);
-        PB_MAYBE_UPDATE(sub_response.pid, other_server_state->recent_state.pid);
-        PB_MAYBE_UPDATE_STR(sub_response.program_name, other_server_state->recent_state.program_name);
-        PB_MAYBE_UPDATE(sub_response.fps, other_server_state->recent_state.fps);
+        PB_MAYBE_UPDATE(sub_response.uid, recent_state->uid);
+        PB_MAYBE_UPDATE(sub_response.pid, recent_state->pid);
+        PB_MAYBE_UPDATE_STR(sub_response.program_name, recent_state->program_name);
+        PB_MAYBE_UPDATE_STR(sub_response.wine_version, recent_state->wine_version);
+        PB_MAYBE_UPDATE(sub_response.fps, recent_state->fps);
+
+        if (recent_state->render_info) {
+            PB_MALLOC_SET(sub_response.render_info, RenderInfo_init_zero);
+            const RenderInfo* const render_info = recent_state->render_info;
+            PB_MAYBE_UPDATE(sub_response.render_info->vulkan, render_info->vulkan);
+            PB_MAYBE_UPDATE(sub_response.render_info->opengl, render_info->opengl);
+
+            PB_MAYBE_UPDATE_STR(sub_response.render_info->engine_name, render_info->engine_name);
+            PB_MAYBE_UPDATE_STR(sub_response.render_info->driver_name, render_info->driver_name);
+            PB_MAYBE_UPDATE_STR(sub_response.render_info->gpu_name, render_info->gpu_name);
+
+            PB_MAYBE_UPDATE(sub_response.render_info->opengl_version_major, render_info->opengl_version_major);
+            PB_MAYBE_UPDATE(sub_response.render_info->opengl_version_minor, render_info->opengl_version_minor);
+            PB_MAYBE_UPDATE(sub_response.render_info->opengl_is_gles, render_info->opengl_is_gles);
+
+            PB_MAYBE_UPDATE(sub_response.render_info->vulkan_version_major, render_info->vulkan_version_major);
+            PB_MAYBE_UPDATE(sub_response.render_info->vulkan_version_minor, render_info->vulkan_version_minor);
+            PB_MAYBE_UPDATE(sub_response.render_info->vulkan_version_patch, render_info->vulkan_version_patch);
+        }
+
     }
 
     // Note: It is actually safe to pass 0 to 'calloc', it will return NULL.
@@ -163,6 +189,9 @@ static int server_request_handler(const Message* const request, void* my_state) 
         if (render_info && render_info->opengl && *render_info->opengl) {
             type = "OpenGL";
             PB_MAYBE_UPDATE(recent_state->render_info->opengl, render_info->opengl);
+            PB_MAYBE_UPDATE(recent_state->render_info->opengl_version_major, render_info->opengl_version_major);
+            PB_MAYBE_UPDATE(recent_state->render_info->opengl_version_minor, render_info->opengl_version_minor);
+            PB_MAYBE_UPDATE(recent_state->render_info->opengl_is_gles, render_info->opengl_is_gles);
         }
         if (render_info && render_info->vulkan && *render_info->vulkan) {
             type = "Vulkan";
@@ -180,6 +209,9 @@ static int server_request_handler(const Message* const request, void* my_state) 
         if (render_info && render_info->driver_name) {
             driver_name = render_info->driver_name;
             PB_MAYBE_UPDATE_STR(recent_state->render_info->driver_name, render_info->driver_name);
+        }
+        if (render_info) {
+            PB_MAYBE_UPDATE_STR(recent_state->render_info->gpu_name, render_info->gpu_name);
         }
 
         if (request->fps) {
