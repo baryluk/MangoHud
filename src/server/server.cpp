@@ -121,6 +121,7 @@ static int prepare_gui_response(Message* response, struct RequestContext *const 
         PB_MAYBE_UPDATE_STR(sub_response.program_name, recent_state->program_name);
         PB_MAYBE_UPDATE_STR(sub_response.wine_version, recent_state->wine_version);
         PB_MAYBE_UPDATE(sub_response.fps, recent_state->fps);
+        PB_MAYBE_UPDATE(sub_response.show_hud, recent_state->show_hud);
 
         if (recent_state->render_info) {
             PB_MALLOC_SET(sub_response.render_info, RenderInfo_init_zero);
@@ -216,11 +217,12 @@ static int server_request_handler(const Message* const request, void* my_state) 
 
         if (request->fps) {
             PB_MAYBE_UPDATE(recent_state->fps, request->fps);
-            fprintf(stderr, "pid %9ld   fps: %.3f  name=%s  type=%s engine=%s driver=%s\n", pid, *request->fps, request->program_name, type, engine_name, driver_name);
+            fprintf(stderr, "pid %9lu   fps: %.3f  name=%s  type=%s engine=%s driver=%s\n", pid, *request->fps, request->program_name, type, engine_name, driver_name);
         }
 
         PB_MAYBE_UPDATE_STR(recent_state->program_name, request->program_name);
         PB_MAYBE_UPDATE_STR(recent_state->wine_version, request->wine_version);
+        PB_MAYBE_UPDATE(recent_state->show_hud, request->show_hud);
     }
 
 
@@ -602,7 +604,7 @@ retry_tcp_bind:
                 }
                 }
 
-                fprintf(stderr, "Connected clients: %ld\n", server_states.size());
+                fprintf(stderr, "Connected clients: %zu\n", server_states.size());
 
                 continue;
 error_1:
@@ -652,7 +654,7 @@ error_1:
                         server_states[i] = other_server_state;
                     }
                     server_states.pop_back();
-                    fprintf(stderr, "New server_states vector size: %ld\n", server_states.size());
+                    fprintf(stderr, "New server_states vector size: %zu\n", server_states.size());
 
                     rpc_client_state_cleanup(rpc_client_state);
                     rpc_client_state->connected = 0;
@@ -677,7 +679,7 @@ error_1:
     }
 
     for (size_t i = 0; i < server_states.size(); i++) {
-        printf("Closing %ld\n", i);
+        printf("Closing %zu\n", i);
         rpc_client_state_cleanup(&(server_states[i]->rpc_client_state));
 
         pb_release(Message_fields, &(server_states[i]->recent_state));

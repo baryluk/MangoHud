@@ -47,7 +47,7 @@
             <property name="can-focus">False</property>
             <property name="column-homogeneous">True</property>
             <child>
-              <!-- n-columns=3 n-rows=1 -->
+              <!-- n-columns=5 n-rows=1 -->
               <object class="GtkGrid" id="client0">
                 <property name="visible">True</property>
                 <property name="can-focus">False</property>
@@ -91,6 +91,28 @@
                   </object>
                   <packing>
                     <property name="left-attach">2</property>
+                    <property name="top-attach">0</property>
+                  </packing>
+                </child>
+                <child>
+                  <object class="GtkLabel">
+                    <property name="visible">True</property>
+                    <property name="can-focus">False</property>
+                    <property name="label" translatable="yes">More</property>
+                  </object>
+                  <packing>
+                    <property name="left-attach">3</property>
+                    <property name="top-attach">0</property>
+                  </packing>
+                </child>
+                <child>
+                  <object class="GtkLabel">
+                    <property name="visible">True</property>
+                    <property name="can-focus">False</property>
+                    <property name="label" translatable="yes">Toggles</property>
+                  </object>
+                  <packing>
+                    <property name="left-attach">4</property>
                     <property name="top-attach">0</property>
                   </packing>
                 </child>

@@ -76,18 +76,54 @@ stop_ev = threading.Event()
 class ClientWidget(Gtk.Grid):
     __gtype_name__ = 'ClientWidget'
 
-    #def __init__(self, **kwargs):
-    #    super().__init__(**kwargs)
+    def __init__(self, **kwargs):
+        super().__init__(**kwargs)
+        self.hud_toggle.connect("notify::active", self.hud_toggle_notify_active_cb)
 
-    #@Gtk.Template.Callback('hud_toggle_clicked')
-    #def on_hud_toggle_button_clicked(self, widget):
-    #     pass
+    @Gtk.Template.Callback('hud_toggle_activate_cb')
+    def on_hud_toggle_toggled(self, widget):
+        print("HUD toggled")
+        pass
+
+    def hud_toggle_notify_active_cb(self, widget, property):
+        print("hud_toggle_notify_active_cb")
+        print(widget)
+        if property: # <GParamBoolean 'active'>
+          print("true")
+        else:
+          print("false")
+        print(property)
+        print(widget.get_active())
+        print()
+
+        # TODO(baryluk): Wire things together.
+        # self.hud_change_requested = True
+
+        # self.notify(...)
+        pass
+
+    # @Gtk.Template.Callback('log_toggle_activate_cb')
+    def on_log_toggle_toggled(self, widget):
+        print("Log toggled")
+        pass
 
     fps = Gtk.Template.Child('fps')
     app_name = Gtk.Template.Child('app_name')
     api = Gtk.Template.Child('api')
+    hud_toggle = Gtk.Template.Child('hud_toggle')
+    log_toggle = Gtk.Template.Child('log_toggle')
 
-# The key is (nodename, pid) => (ClientWidget, client last Message) with instanciated template.
+class Client(object):
+    def __init__(self, pid, nodename, client_widget, last_msg_state):
+        # Instance of ClientWidget with updated stuff.
+        self.client_widget = client_widget
+        self.last_msg_state = last_msg_state
+        self.nodename = nodename
+        self.pid = pid
+        self.hud_change_requested = False
+        self.hud_change_request = False
+
+# The key is (nodename, pid) => ClientWidget
 known_clients = {}
 
 clients_container = builder.get_object('clients_container')
@@ -101,8 +137,8 @@ def handle_message(msg):
 
     if msg.clients:
         new_clients = False
-        for client in msg.clients:
-            key = (client.nodename, client.pid)
+        for client_msg in msg.clients:
+            key = (client_msg.nodename, client_msg.pid)
             if key not in known_clients:
                 client_widget = ClientWidget()
 
@@ -114,28 +150,47 @@ def handle_message(msg):
 
                     last_row = client_widget
                     last_row_count += 1
-                    known_clients[key] = [client_widget, client]
+                    known_clients[key] = Client(client_msg.pid, client_msg.nodename, client_widget, client_msg)
                     new_clients = True
             else:
-                known_clients[key][1] = client
+                known_clients[key].last_msg_state = client_msg
         if new_clients:
             clients_container.show_all()
 
         # TODO(baryluk): Remove stale clients or once we know for
         # sure are down.
 
-        for key, (client_widget, client) in known_clients.items():
-            GLib.idle_add(client_widget.fps.set_text, f"{client.fps:.3f}")
-            GLib.idle_add(client_widget.app_name.set_text, f"{client.program_name}")
-            if client.render_info and client.render_info.opengl:
-                opengl = "OpenGL ES" if client.render_info.opengl_is_gles else "OpenGL"
-                opengl += f" {client.render_info.opengl_version_major}.{client.render_info.opengl_version_minor}"
-                GLib.idle_add(client_widget.api.set_text, opengl)
-            elif client.render_info and client.render_info.vulkan:
-                vulkan = f"Vulkan {client.render_info.vulkan_version_major}.{client.render_info.vulkan_version_minor}.{client.render_info.vulkan_version_patch}"
-                GLib.idle_add(client_widget.api.set_text, vulkan)
+        for key, client in known_clients.items():
+            client_msg = client.last_msg_state
+            client_widget = client.client_widget
+            client_widget.fps.set_text(f"{client_msg.fps:.3f}")
+            client_widget.app_name.set_text(f"{client_msg.program_name}")
+            api = ""
+            if client_msg.render_info and client_msg.render_info.opengl:
+                opengl = "OpenGL ES" if client_msg.render_info.opengl_is_gles else "OpenGL"
+                api = f"{opengl} {client_msg.render_info.opengl_version_major}.{client_msg.render_info.opengl_version_minor}"
+            elif client_msg.render_info and client_msg.render_info.vulkan:
+                api = f"Vulkan {client_msg.render_info.vulkan_version_major}.{client_msg.render_info.vulkan_version_minor}.{client_msg.render_info.vulkan_version_patch}"
             else:
-                GLib.idle_add(client_widget.api.set_text, f"pid {client.pid}")
+                api = f"pid {client_msg.pid}"
+            if client_msg.render_info.gpu_name:
+                api += f"\n{client_msg.render_info.gpu_name}"
+            if client_msg.render_info.driver_name:
+                api += f"\n{client_msg.render_info.driver_name}"
+            if client_msg.render_info.engine_name:
+                api += f"\n{client_msg.render_info.engine_name}"
+            if client_msg.wine_version:
+                api += f"\nWine {client_msg.wine_version}"
+            client_widget.api.set_text(api)
+            # Add time details in tooltip (like last update).
+            tooltip = f"pid {client_msg.pid} @ {client_msg.nodename}; uid {client_msg.uid}; username {client_msg.username}"
+            client_widget.api.set_tooltip_text(tooltip)
+
+            # TODO(baryluk): If user toggled it On, but next few msg, still show client.show_hud
+            # False, don't immedietly toggle it back.
+            client_widget.hud_toggle.set_active(client_msg.show_hud)
+            client_widget.hud_toggle.set_sensitive(True)
+
             # TODO(baryluk): Garbage collect old clients.
 
 
@@ -143,10 +198,22 @@ def thread_loop(sock):
     protocol_version_warning_shown = False
     while not stop_ev.is_set():
         msg = pb.Message(protocol_version=1, client_type=pb.Message.ClientType.GUI)
+
+        # Not thread safe, as known_clients is updated by main thread.
+        for client_key, client in known_clients.items():
+            if client.hud_change_requested or True:
+              last_msg = client.last_msg_state
+              client_msg = pb.Message()
+              client_msg.nodename = last_msg.nodename
+              client_msg.uid = last_msg.uid
+              client_msg.pid = last_msg.pid
+              client_msg.show_hud = client.hud_change_request
+              msg.clients.append(client_msg)
+
         send(sock, msg)
 
         msg = recv(sock)
-        print(msg)
+        # print(msg)
 
         if (msg.protocol_version and msg.protocol_version > SUPPORTED_PROTOCOL_VERSION):
             if not protocol_version_warnings_shown:
@@ -158,8 +225,10 @@ def thread_loop(sock):
         GLib.idle_add(handle_message, msg)
 
         # Sleep less if 50ms laready passed from previous contact.
-        # Sleep more if there are no clients, to conserve CPU / battery.
-        time.sleep(0.05)
+        if len(msg.clients) == 0:
+          time.sleep(1.00)
+        else:
+          time.sleep(0.05)
 
 def thread_loop_start(sock):
     print("Connected")

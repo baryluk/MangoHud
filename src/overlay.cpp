@@ -29,13 +29,20 @@ std::vector<logData> graph_data;
 
 extern std::string program_name;
 
-static int mango_message_generator(Message* message, void* my_state) {
+struct MessageHandlerState {
+  struct swapchain_stats *sw_stats;
+  struct overlay_params *params;
+};
+
+static int mango_message_generator(Message* message, void* my_state_void) {
    assert(message != NULL);
-   assert(my_state != NULL);
+   assert(my_state_void != NULL);
 
    const uint64_t now = os_time_get(); /* us */
 
-   struct swapchain_stats *const sw_stats = (struct swapchain_stats *)my_state;
+   struct MessageHandlerState *const my_state = (struct MessageHandlerState *)(my_state_void);
+   struct swapchain_stats *const sw_stats = my_state->sw_stats;
+   struct overlay_params *const params = my_state->params;
 
    PB_MALLOC_SET(message->protocol_version, 1);
    PB_MALLOC_SET(message->client_type, Message_ClientType_APP);
@@ -137,7 +144,6 @@ message FrameTime {
      // PB_MALLOC_SET(app_io, sw_stats->io.read_iops);
    }
 
-
    // Frame stats
    // double time_dividor;
    // struct frame_stat stats_min, stats_max;
@@ -211,6 +217,8 @@ extern std::vector<logData> graph_data;
 
 */
 
+   PB_MALLOC_SET(message->show_hud, (!params->no_display));
+
    // TODO: FpsLimitter settings
    // TODO: HUD toggle
    // TODO: Logging (local and remote) toggle.
@@ -223,13 +231,21 @@ extern std::vector<logData> graph_data;
    return 0;
 }
 
-static int mango_message_handler(const Message* const message, void* my_state) {
+static int mango_message_handler(const Message* const message, void* my_state_void) {
    assert(message != NULL);
-   assert(my_state != NULL);
+   assert(my_state_void != NULL);
 
    // DEBUG(fprintf(stderr, "client_request_handler called\n"));
 
-   struct swapchain_stats *const sw_stats = (struct swapchain_stats *)my_state;
+   struct MessageHandlerState *const my_state = (struct MessageHandlerState *)(my_state_void);
+   struct swapchain_stats *const sw_stats = my_state->sw_stats;
+   struct overlay_params *const params = my_state->params;
+
+   const uint64_t now = os_time_get(); /* us */
+
+   if (message->show_hud) {
+      params->no_display = !(*(message->show_hud));
+   }
 
    return 0;
 }
@@ -327,19 +343,29 @@ void update_hud_info(struct swapchain_stats& sw_stats, struct overlay_params& pa
    sw_stats.n_frames++;
    sw_stats.n_frames_since_update++;
 
-   struct RpcClientState *const rpc_client_state = &(sw_stats.rpc_client_state);
+   // Communication with server.
+   // It is OK to call this every frame.
+   {
+      struct RpcClientState *const rpc_client_state = &(sw_stats.rpc_client_state);
 
-   if (!sw_stats.rpc_client_state_initialized) {
-       if (rpc_client_connect(rpc_client_state) == 0) {
-          rpc_client_state->connected = 1;
-       }
-       // Even if we fail to connect. Still mark as initialized.
-       sw_stats.rpc_client_state_initialized = 1;
+      if (!sw_stats.rpc_client_state_initialized) {
+          if (rpc_client_connect(rpc_client_state) == 0) {
+             rpc_client_state->connected = 1;
+          }
+          // Even if we fail to connect. Still mark as initialized.
+          sw_stats.rpc_client_state_initialized = 1;
+      }
+
+      // It is OK to have this on stack.
+      struct MessageHandlerState handler_state = {
+         .sw_stats = &sw_stats,
+         .params = &params,
+      };
+      // Communicate or try connecting, etc.
+      rpc_client_maybe_communicate(rpc_client_state,
+                                   &mango_message_generator, (void*)(&handler_state),
+                                   &mango_message_handler, (void*)(&handler_state));
    }
-
-   rpc_client_maybe_communicate(rpc_client_state,
-                                &mango_message_generator, (void*)(&sw_stats),
-                                &mango_message_handler, (void*)(&sw_stats));
 }
 
 void calculate_benchmark_data(void *params_void){

@@ -28,7 +28,7 @@ THE SOFTWARE.
   <requires lib="gtk+" version="3.24"/>
   <!-- interface-css-provider-path gui.css -->
   <!-- interface-license-type mit -->
-  <!-- n-columns=3 n-rows=1 -->
+  <!-- n-columns=5 n-rows=1 -->
   <template class="ClientWidget" parent="GtkGrid">
     <property name="visible">True</property>
     <property name="can-focus">False</property>
@@ -67,11 +67,79 @@ THE SOFTWARE.
         <property name="can-focus">False</property>
         <property name="label" translatable="yes">API</property>
         <style>
-          <class name="bigone"/>
+          <class name="api"/>
         </style>
       </object>
       <packing>
         <property name="left-attach">2</property>
+        <property name="top-attach">0</property>
+      </packing>
+    </child>
+    <child>
+      <!-- n-columns=2 n-rows=2 -->
+      <object class="GtkGrid">
+        <property name="visible">True</property>
+        <property name="can-focus">False</property>
+        <child>
+          <object class="GtkLabel">
+            <property name="visible">True</property>
+            <property name="can-focus">False</property>
+            <property name="label" translatable="yes">HUD</property>
+          </object>
+          <packing>
+            <property name="left-attach">0</property>
+            <property name="top-attach">0</property>
+          </packing>
+        </child>
+        <child>
+          <object class="GtkLabel">
+            <property name="visible">True</property>
+            <property name="can-focus">False</property>
+            <property name="label" translatable="yes">Log</property>
+          </object>
+          <packing>
+            <property name="left-attach">0</property>
+            <property name="top-attach">1</property>
+          </packing>
+        </child>
+        <child>
+          <object class="GtkSwitch" id="hud_toggle">
+            <property name="visible">True</property>
+            <property name="sensitive">False</property>
+            <property name="can-focus">True</property>
+            <signal name="activate" handler="hud_toggle_activate_cb" swapped="no"/>
+          </object>
+          <packing>
+            <property name="left-attach">1</property>
+            <property name="top-attach">0</property>
+          </packing>
+        </child>
+        <child>
+          <object class="GtkSwitch" id="log_toggle">
+            <property name="visible">True</property>
+            <property name="sensitive">False</property>
+            <property name="can-focus">True</property>
+            <signal name="activate" handler="log_toggle_activate_cb" swapped="no"/>
+          </object>
+          <packing>
+            <property name="left-attach">1</property>
+            <property name="top-attach">1</property>
+          </packing>
+        </child>
+      </object>
+      <packing>
+        <property name="left-attach">4</property>
+        <property name="top-attach">0</property>
+      </packing>
+    </child>
+    <child>
+      <object class="GtkLabel" id="more">
+        <property name="visible">True</property>
+        <property name="can-focus">False</property>
+        <property name="label" translatable="yes">More</property>
+      </object>
+      <packing>
+        <property name="left-attach">3</property>
         <property name="top-attach">0</property>
       </packing>
     </child>
