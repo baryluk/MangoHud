@@ -3,7 +3,8 @@
 set -e
 set -x
 
-nanopb_generator.py -s type:FT_POINTER mangohud.proto
+# nanopb_generator.py -s type:FT_POINTER mangohud.proto
+nanopb_generator.py -f mangohud.options mangohud.proto
 
 protoc --python_out=../gui/protos mangohud.proto
 #protoc --nanopb_out=./ mangohud.proto

@@ -9,7 +9,7 @@
 # path is already set up properly and there is no need to give
 # --plugin= on the command line.
 
-NANOPB_PATH="../../subprojects/nanopb/generator"
+NANOPB_PATH="../../subprojects/nanopb-0.4.4/generator"
 if [ -x "${NANOPB_PATH}/nanopb_generator.py" ]; then
   exec python3 "${NANOPB_PATH}/nanopb_generator.py" --protoc-plugin
 else

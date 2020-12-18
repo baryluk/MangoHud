@@ -219,7 +219,8 @@ endif
 dearimgui_sp = subproject('imgui')
 dearimgui_dep = dearimgui_sp.get_variable('dearimgui_dep')
 nanopb_sp = subproject('nanopb')
-nanopb_dep = nanopb_sp.get_variable('nanopb_dep')
+# nanopb_dep = nanopb_sp.get_variable('nanopb_dep')
+nanopb_dep = dependency('nanopb', version : '>=0.4.2', method : 'cmake', fallback : ['nanopb', 'nanopb_dep'], required : true)
 
 if ['windows', 'mingw'].contains(host_machine.system())
   subdir('modules/minhook')

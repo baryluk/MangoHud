@@ -1,0 +1,10 @@
+# Making all fields pointers is a bit inefficient.
+# It would be best to only do so for strings, repeated fields,
+# not scalar primitives.
+#
+# Right now there is no easy way to do this by type, only by name.
+#
+# Either here in .options file, or using (nanopb).type annotations
+# on each file, or using `-s type:FT_POINTER` flag to compiler.
+
+* type:FT_POINTER

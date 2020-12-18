@@ -1,8 +1,8 @@
 #cmake = import('cmake')
 
-nanopb = dependency('nanopb', version : '>=0.4.2', method : 'cmake', modules : ['nanopb::protobuf-nanopb-static'], required : false)
+#nanopb = dependency('nanopb', version : '>=0.4.2', method : 'cmake', modules : ['nanopb::protobuf-nanopb-static'], required : false)
 
-must_regenerate_pb = nanopb.found()
+must_regenerate_pb = nanopb_dep.found()
 #if not nanopb.found()
 #	opt_var = cmake.subproject_options()
 #	opt_var.add_cmake_defines({
@@ -40,6 +40,7 @@ endif
 rpc_common = static_library(
   'common',
   rpc_common_sources,
+  mangohud_pb,
   c_args : [
     pre_args,
   ],
@@ -53,7 +54,10 @@ rpc_common = static_library(
 )
 
 #executable('server', ['server.cpp'], link_with : rpc_common, dependencies : nanopb, install : true)
-executable('server', ['server.cpp'], link_with : rpc_common, install : true)
+#executable('server', ['server.cpp'], link_with : rpc_common, install : true)
 #executable('server', ['server.cpp'], dependencies : [rpc_common, nanopb], install : true)
 
-executable('client-demo', ['client_demo.cpp'], link_with : rpc_common, install : false)
+#executable('client-demo', ['client_demo.cpp'], link_with : rpc_common, install : false)
+
+executable('server', ['server.cpp'],  dependencies : [nanopb_dep], link_with : rpc_common, install : true)
+executable('client-demo', ['client_demo.cpp'], dependencies : [nanopb_dep], link_with : rpc_common, install : false)
