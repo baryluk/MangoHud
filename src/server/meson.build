@@ -37,6 +37,8 @@ endif
 
 #mangohud_pb = nanopb('mangohud.proto')
 
+mangohud_pb_headers = mangohud_pb[1]
+
 rpc_common = static_library(
   'common',
   rpc_common_sources,
@@ -59,5 +61,5 @@ rpc_common = static_library(
 
 #executable('client-demo', ['client_demo.cpp'], link_with : rpc_common, install : false)
 
-executable('server', ['server.cpp'],  dependencies : [nanopb_dep], link_with : rpc_common, install : true)
-executable('client-demo', ['client_demo.cpp'], dependencies : [nanopb_dep], link_with : rpc_common, install : false)
+executable('server', ['server.cpp', mangohud_pb_headers],  dependencies : [nanopb_dep], link_with : rpc_common, install : true)
+executable('client-demo', ['client_demo.cpp', mangohud_pb_headers], dependencies : [nanopb_dep], link_with : rpc_common, install : false)

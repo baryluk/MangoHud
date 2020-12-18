@@ -155,6 +155,7 @@ vklayer_mesa_overlay = shared_library(
   vklayer_files,
   opengl_files,
   overlay_spv,
+  mangohud_pb_headers,
   c_args : [
     pre_args,
     no_override_init_args,
