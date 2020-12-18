@@ -30,4 +30,3 @@ g++ -Wall -g -O2 -o server server.cpp common.c mangohud.pb.c -lprotobuf-nanopb
 g++ -Wall -g -O2 -o client-demo client_demo.cpp common.c mangohud.pb.c -lprotobuf-nanopb
 g++ -m32 -Wall -g -O2 -o client-demo_32 client_demo.cpp common.c mangohud.pb.c -lprotobuf-nanopb
 ldd client-demo | grep -E 'libgcc_s\.so|libstdc\+\+\.so' && echo "Warning: Linked to C++ runtime"
-
