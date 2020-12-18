@@ -7,4 +7,4 @@ source_hash = 66621e896c1e357d21b4e5bcc87584afd95abe18ea7a3314ce2696048ab340db
 revision = 0.4.4
 patch_url = https://flightlessmango.com/wraps/nanopb.zip
 patch_filename = nanopb.zip
-patch_hash = 88a0006fdce7cf452e395c0f246e6cbfda497d62cd65eeaa3d90b2243e43be02
+patch_hash = 766ca4a241f6dedd946ab15df4d9fadb1e93e15ed2ddf000ea2861e64c6ebe46
