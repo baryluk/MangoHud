@@ -147,9 +147,9 @@ configure() {
     if [[ ! -f "build/meson32/build.ninja" ]]; then
 
         CC="gcc -m32" \
-        CFLAGS="-m32"
+        CFLAGS="-m32" \
         CXX="g++ -m32" \
-        CCCFLAGS="-m32"
+        CCCFLAGS="-m32" \
         PKG_CONFIG_PATH="/usr/lib32/pkgconfig:/usr/lib/i386-linux-gnu/pkgconfig:/usr/lib/pkgconfig:${PKG_CONFIG_PATH_32}" \
         LLVM_CONFIG="/usr/bin/llvm-config32" \
         meson build/meson32 --libdir lib/mangohud/lib32 --prefix /usr -Dappend_libdir_mangohud=false -Dld_libdir_prefix=true -Dld_libdir_abs=true $@ ${CONFIGURE_OPTS}

@@ -45,16 +45,16 @@ static int mango_message_generator(Message* message, void* my_state) {
    if (program_name.size()) {
        message->program_name = strndup(program_name.data(), program_name.length());
    }
-   if (wine_version.size()) {
-       message->wine_version = strndup(wine_version.data(), wine_version.length());
+   if (wineVersion.size()) {
+       message->wine_version = strndup(wineVersion.data(), wineVersion.length());
    }
 
    PB_MALLOC_SET(message->architecture, Architecture_init_zero);
    PB_MALLOC_SET(message->architecture->os, Architecture_OS_LINUX);
 
-   PB_MALLOC_SET(message->timestamp, Timestamp_Timestamp_init_zero);
+   PB_MALLOC_SET(message->timestamp, Timestamp_init_zero);
    PB_MALLOC_SET(message->timestamp->clock_source, Timestamp_TimestampSource_MONOTONIC);
-   PB_MALLOC_SET(message->timestamp->timestamp, now);
+   PB_MALLOC_SET(message->timestamp->timestamp_usec, now);
 
    // PB_MALLOC_SET(message->app_uptime_msec, );  // In Linux there is no way to really find this out.
    // A possible option might be reading /proc/self/sched
@@ -89,9 +89,9 @@ message FrameTime {
    RenderInfo *const render_info = message->render_info;
    if (sw_stats->version_gl.major && sw_stats->version_gl.minor) {
      PB_MALLOC_SET(render_info->opengl, true);
-     PB_MALLOC_SET(render_info->version_gl_major, sw_stats->version_gl.major);
-     PB_MALLOC_SET(render_info->version_gl_minor, sw_stats->version_gl.minor);
-     PB_MALLOC_SET(render_info->version_gl_is_gles, sw_stats->version_gl.is_gles); // bool
+     PB_MALLOC_SET(render_info->opengl_version_major, sw_stats->version_gl.major);
+     PB_MALLOC_SET(render_info->opengl_version_minor, sw_stats->version_gl.minor);
+     PB_MALLOC_SET(render_info->opengl_is_gles, sw_stats->version_gl.is_gles); // bool
 
      // vendor string
      // renderer string
@@ -100,16 +100,16 @@ message FrameTime {
    }
    if (sw_stats->version_vk.major && sw_stats->version_vk.minor) {
      PB_MALLOC_SET(render_info->vulkan, true);
-     PB_MALLOC_SET(render_info->version_vk_major, sw_stats->version_vk.major);
-     PB_MALLOC_SET(render_info->version_vk_minor, sw_stats->version_vk.minor);
-     PB_MALLOC_SET(render_info->version_vk_patch, sw_stats->version_vk.patch);
+     PB_MALLOC_SET(render_info->vulkan_version_major, sw_stats->version_vk.major);
+     PB_MALLOC_SET(render_info->vulkan_version_minor, sw_stats->version_vk.minor);
+     PB_MALLOC_SET(render_info->vulkan_version_patch, sw_stats->version_vk.patch);
    }
    render_info->engine_name = strndup(sw_stats->engineName.data(), sw_stats->engineName.length());
    render_info->engine_version = strndup(sw_stats->engineVersion.data(), sw_stats->engineVersion.length());
    render_info->device_name = strndup(sw_stats->deviceName.data(), sw_stats->deviceName.length());
    render_info->gpu_name = strndup(sw_stats->gpuName.data(), sw_stats->gpuName.length());
    render_info->driver_name = strndup(sw_stats->driverName.data(), sw_stats->driverName.length());
-   PB_MALLOC_SET(render_info_>device_id, deviceID); // int32
+   PB_MALLOC_SET(render_info->device_id, deviceID); // int32
 
 
    PB_MALLOC_SET(message->frames, sw_stats->n_frames);  // uint64_t
@@ -137,7 +137,6 @@ message FrameTime {
      // PB_MALLOC_SET(app_io, sw_stats->io.read_iops);
    }
 
-   if (
 
    // Frame stats
    // double time_dividor;
