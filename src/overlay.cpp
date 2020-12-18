@@ -48,6 +48,11 @@ static int mango_message_generator(Message* message, void* my_state_void) {
    PB_MALLOC_SET(message->client_type, Message_ClientType_APP);
    PB_MALLOC_SET(message->pid, getpid());
    PB_MALLOC_SET(message->uid, getuid());
+   // Use a stable ID for the client.
+   PB_MALLOC_SET(message->unique_in_process_id, (intptr_t)(&(sw_stats->rpc_client_state)));
+   // TODO: Maybe this could be improved, to handle window resizes / swapchain recreations better.
+
+
    PB_MALLOC_SET(message->fps, fps);
    if (program_name.size()) {
        message->program_name = strndup(program_name.data(), program_name.length());

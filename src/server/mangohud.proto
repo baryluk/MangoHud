@@ -54,6 +54,12 @@ message Message {
   string program_name = 17;
   string wine_version = 18;
 
+
+  // Just in case multiple connections are made from same process / thread.
+  // An easy way is to return a memory address of the ClientState, or global
+  // variable counter. Id's can be recycled between reconnects.
+  uint64 unique_in_process_id = 19;
+
   // Used to send info about Vulkan, OpenGL, non-GPU, driver version, engine name and version, etc.
   RenderInfo render_info = 20;
   // A request or response with blacklist.
@@ -87,6 +93,7 @@ message Message {
 
   bool stream_frametimes = 60;
 
+  bool change_show_hud = 1061;  // Workaround temporarily the proto3 lack of optional.
   bool show_hud = 61;
 
   repeated float frame_limits = 62;  // Can be a list of frame limits a user can toggle between, or empty to disable.

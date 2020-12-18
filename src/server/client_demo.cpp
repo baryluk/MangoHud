@@ -90,6 +90,7 @@ retry:
             PB_MALLOC_SET(request->client_type, Message_ClientType_APP);
             PB_MALLOC_SET(request->pid, getpid());
             PB_MALLOC_SET(request->uid, getuid());
+            PB_MALLOC_SET(request->unique_in_process_id, (intptr_t)(rpc_client_state));
             PB_MALLOC_SET(request->fps, 50.0f + 20.0f*drand48());
             fprintf(stderr, "fps: %f\n", *(request->fps));
 

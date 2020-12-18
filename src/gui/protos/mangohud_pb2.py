@@ -19,7 +19,7 @@ DESCRIPTOR = _descriptor.FileDescriptor(
   syntax='proto3',
   serialized_options=None,
   create_key=_descriptor._internal_create_key,
-  serialized_pb=b'\n\x0emangohud.proto\"M\n\nRpcMessage\x12\x18\n\x10protocol_version\x18\x01 \x01(\r\x12\x0e\n\x06rpc_id\x18\x02 \x01(\x04\x12\x15\n\x03msg\x18\x06 \x01(\x0b\x32\x08.Message\"\x91\t\n\x07Message\x12\x18\n\x10protocol_version\x18\x01 \x01(\r\x12(\n\x0b\x63lient_type\x18\x02 \x01(\x0e\x32\x13.Message.ClientType\x12\x15\n\x05\x61live\x18\x03 \x01(\x0b\x32\x06.Alive\x12#\n\x0c\x61rchitecture\x18\n \x01(\x0b\x32\r.Architecture\x12\x10\n\x08nodename\x18\x0b \x01(\t\x12\x0b\n\x03pid\x18\x0c \x01(\x04\x12\x0b\n\x03uid\x18\r \x01(\x04\x12\x0b\n\x03gid\x18\x0e \x01(\x04\x12\x0e\n\x06groups\x18\x0f \x01(\t\x12\x10\n\x08username\x18\x10 \x01(\t\x12\x14\n\x0cprogram_name\x18\x11 \x01(\t\x12\x14\n\x0cwine_version\x18\x12 \x01(\t\x12 \n\x0brender_info\x18\x14 \x01(\x0b\x32\x0b.RenderInfo\x12!\n\tblacklist\x18\x1e \x01(\x0b\x32\x0e.BlackListInfo\x12&\n\x0e\x63onfig_request\x18\x1f \x01(\x0b\x32\x0e.ConfigRequest\x12\x1c\n\x0b\x63onfig_data\x18  \x01(\x0b\x32\x07.Config\x12$\n\rconfig_reload\x18! \x01(\x0b\x32\r.ConfigReload\x12\x1d\n\ttimestamp\x18( \x01(\x0b\x32\n.Timestamp\x12\x17\n\x0f\x61pp_uptime_msec\x18) \x01(\x04\x12\x0b\n\x03\x66ps\x18\x32 \x01(\x02\x12\x1e\n\nframetimes\x18\x33 \x03(\x0b\x32\n.FrameTime\x12\x0e\n\x06\x66rames\x18\x34 \x01(\x04\x12\x1e\n\x16last_present_time_usec\x18\x35 \x01(\x04\x12\x1b\n\x13\x66rames_since_update\x18\x36 \x01(\r\x12\x1c\n\x14last_fps_update_usec\x18\x37 \x01(\x04\x12\x19\n\x11stream_frametimes\x18< \x01(\x08\x12\x10\n\x08show_hud\x18= \x01(\x08\x12\x14\n\x0c\x66rame_limits\x18> \x03(\x02\x12\r\n\x05vsync\x18? \x01(\x08\x12\x1b\n\x13media_player_string\x18\x46 \x01(\t\x12\x15\n\rextra_string1\x18G \x01(\t\x12\x15\n\rextra_string2\x18H \x01(\t\x12\x1a\n\x08gpu_info\x18P \x03(\x0b\x32\x08.GpuInfo\x12\x1a\n\x08\x63pu_info\x18Q \x01(\x0b\x32\x08.CpuInfo\x12\"\n\x10\x63pu_info_details\x18R \x01(\x0b\x32\x08.CpuInfo\x12\x1a\n\x08mem_info\x18S \x01(\x0b\x32\x08.MemInfo\x12\x18\n\x07io_info\x18T \x03(\x0b\x32\x07.IoInfo\x12!\n\x0c\x61pp_gpu_info\x18Z \x03(\x0b\x32\x0b.GpuInfoApp\x12!\n\x0c\x61pp_cpu_info\x18[ \x01(\x0b\x32\x0b.CpuInfoApp\x12!\n\x0c\x61pp_mem_info\x18] \x01(\x0b\x32\x0b.MemInfoApp\x12\x1f\n\x0b\x61pp_io_info\x18^ \x01(\x0b\x32\n.IoInfoApp\x12\x19\n\x07\x63lients\x18\x64 \x03(\x0b\x32\x08.Message\"*\n\nClientType\x12\x07\n\x03\x41PP\x10\x00\x12\n\n\x06SERVER\x10\x01\x12\x07\n\x03GUI\x10\x02\"\x16\n\x05\x41live\x12\r\n\x05\x64ummy\x18\x01 \x01(\r\"\xcc\x02\n\x0c\x41rchitecture\x12\x1c\n\x02os\x18\x01 \x01(\x0e\x32\x10.Architecture.OS\x12\x0e\n\x06\x64istro\x18\x02 \x01(\t\x12\x16\n\x0e\x64istro_version\x18\x03 \x01(\t\x12\x16\n\x0ekernel_version\x18\x04 \x01(\t\x12\x14\n\x0c\x61rchitecture\x18\x05 \x01(\t\x12 \n\x18mangohud_library_version\x18\x06 \x01(\t\x12\x1e\n\x16mangohud_server_verion\x18\x07 \x01(\t\x12\x1c\n\x14mangohud_gui_version\x18\x08 \x01(\t\"h\n\x02OS\x12\t\n\x05LINUX\x10\x00\x12\x0b\n\x07\x46REEBSD\x10\x01\x12\t\n\x05MACOS\x10\x02\x12\x0b\n\x07WINDOWS\x10\x03\x12\x0b\n\x07\x41NDROID\x10\x04\x12\x0c\n\x08REACT_OS\x10\x05\x12\t\n\x05HAIKU\x10\x06\x12\x0c\n\x08GNU_HURD\x10\x07\"\xe9\x04\n\nRenderInfo\x12\x0e\n\x06opengl\x18\x01 \x01(\x08\x12\x0e\n\x06vulkan\x18\x02 \x01(\x08\x12\x16\n\x0eopengl_version\x18\n \x01(\t\x12\x1a\n\x12opengl_device_name\x18\x0b \x01(\t\x12\x1c\n\x14opengl_version_major\x18\x0c \x01(\x05\x12\x1c\n\x14opengl_version_minor\x18\r \x01(\x05\x12\x16\n\x0eopengl_is_gles\x18\x0e \x01(\x08\x12\x19\n\x11opengl_extensions\x18\x0f \x03(\t\x12\x13\n\x0b\x65ngine_name\x18\x14 \x01(\t\x12\x16\n\x0e\x65ngine_version\x18\x15 \x01(\t\x12\x13\n\x0b\x64\x65vice_name\x18\x16 \x01(\t\x12\x10\n\x08gpu_name\x18\x17 \x01(\t\x12\x13\n\x0b\x64river_name\x18\x18 \x01(\t\x12\x1c\n\x14vulkan_version_major\x18\x19 \x01(\x05\x12\x1c\n\x14vulkan_version_minor\x18\x1a \x01(\x05\x12\x1c\n\x14vulkan_version_patch\x18\x1b \x01(\x05\x12%\n\x1dvulkan_instance_layers_active\x18\x1c \x03(\t\x12\"\n\x1avulkan_instance_extensions\x18\x1d \x03(\t\x12*\n\"vulkan_device_extensions_available\x18\x1e \x03(\t\x12(\n vulkan_device_extensions_enabled\x18\x1f \x03(\t\x12!\n\x19vulkan_validation_enabled\x18  \x01(\x08\x12\x11\n\tdevice_id\x18( \x01(\x05\"=\n\rBlackListInfo\x12\x13\n\x0b\x62lacklisted\x18\x01 \x01(\x08\x12\x17\n\x0f\x62lacklist_names\x18\x02 \x03(\t\"I\n\rConfigRequest\x12\x14\n\x0cmachine_name\x18\x01 \x01(\t\x12\x14\n\x0cprogram_name\x18\x02 \x01(\t\x12\x0c\n\x04wine\x18\x03 \x01(\x08\"#\n\x0c\x43onfigReload\x12\x13\n\x0b\x63onfig_path\x18\x01 \x01(\t\"\xc3\x03\n\x06\x43onfig\x12\"\n\x1a\x66ps_sampling_interval_msec\x18\x01 \x01(\r\x12\x10\n\x08show_hud\x18\x02 \x01(\x08\x12)\n\x0chud_geometry\x18\x03 \x01(\x0b\x32\x13.Config.HudGeometry\x12!\n\x08\x65lements\x18\x04 \x03(\x0b\x32\x0f.Config.Element\x12#\n\x0etoggle_logging\x18\x05 \x01(\x0b\x32\x0b.Config.Key\x12\x1f\n\ntoggle_hud\x18\x06 \x01(\x0b\x32\x0b.Config.Key\x12\x1f\n\nreload_cfg\x18\x07 \x01(\x0b\x32\x0b.Config.Key\x1aP\n\x0bHudGeometry\x12\r\n\x05width\x18\x01 \x01(\r\x12\x0e\n\x06height\x18\x02 \x01(\r\x12\x10\n\x08offset_x\x18\x03 \x01(\r\x12\x10\n\x08offset_y\x18\x04 \x01(\r\x1a\x61\n\x07\x45lement\x12\x0c\n\x04name\x18\x01 \x01(\t\x12\x0c\n\x04\x66ont\x18\x02 \x01(\t\x12\r\n\x05\x63olor\x18\x03 \x01(\t\x12\x0c\n\x04text\x18\x04 \x01(\t\x12\r\n\x05value\x18\x05 \x01(\t\x12\x0e\n\x06suffix\x18\x06 \x01(\t\x1a\x19\n\x03Key\x12\x12\n\nkeybinding\x18\x01 \x01(\t\"\xa0\x02\n\tTimestamp\x12\x30\n\x0c\x63lock_source\x18\x01 \x01(\x0e\x32\x1a.Timestamp.TimestampSource\x12\x16\n\x0etimestamp_usec\x18\x02 \x01(\x04\"\xc8\x01\n\x0fTimestampSource\x12\x11\n\rMONOTONIC_RAW\x10\x00\x12\r\n\tMONOTONIC\x10\x01\x12\x14\n\x10MONOTONIC_COARSE\x10\x02\x12\x0c\n\x08\x42OOTTIME\x10\x03\x12\x0c\n\x08REALTIME\x10\x04\x12\x13\n\x0fREALTIME_COARSE\x10\x05\x12\x07\n\x03TAI\x10\x06\x12\x14\n\x10GETTIMEOFDAY_UTC\x10\x07\x12\x08\n\x04TIME\x10\t\x12#\n\x1fWINDOWS_QueryPerformanceCounter\x10\n\"E\n\tFrameTime\x12\x16\n\x0etimestamp_usec\x18\x01 \x01(\x04\x12\r\n\x05index\x18\x02 \x01(\r\x12\x11\n\ttime_usec\x18\x03 \x01(\r\"\xa1\x04\n\x07GpuInfo\x12\x0b\n\x03\x62us\x18\x01 \x01(\x05\x12\x14\n\x0cpci_dev_info\x18\x02 \x01(\t\x12\x10\n\x08gpu_name\x18\x03 \x01(\t\x12\x13\n\x0b\x63ore_temp_C\x18\n \x01(\x05\x12\x12\n\nmem_temp_C\x18\x0b \x01(\x05\x12\x15\n\rfan_speed_RPM\x18\x0c \x01(\x05\x12\x16\n\x0e\x63ore_clock_kHz\x18\x14 \x01(\x05\x12\x1a\n\x12\x63ore_clock_kHz_max\x18\x15 \x01(\x05\x12\x15\n\rmem_clock_kHz\x18\x16 \x01(\x05\x12\x19\n\x11mem_clock_max_kHz\x18\x17 \x01(\x05\x12\x10\n\x08gpu_load\x18\x1e \x01(\x02\x12\x0f\n\x07power_W\x18\x1f \x01(\x02\x12\x14\n\x0c\x65vent_engine\x18\x33 \x01(\x02\x12\x12\n\ntesselator\x18\x34 \x01(\x02\x12\x19\n\x11texture_addresser\x18\x35 \x01(\x02\x12\x15\n\rshader_export\x18\x36 \x01(\x02\x12#\n\x1bsequencer_instruction_cache\x18\x37 \x01(\x02\x12\x1b\n\x13shader_interpolator\x18\x38 \x01(\x02\x12\x16\n\x0escan_converter\x18\x39 \x01(\x02\x12\x1a\n\x12primitive_assembly\x18: \x01(\x02\x12\x13\n\x0b\x64\x65pth_block\x18; \x01(\x02\x12\x13\n\x0b\x63olor_block\x18< \x01(\x02\x12\x0b\n\x03gtt\x18= \x01(\x04\x12\x0f\n\x07gtt_max\x18> \x01(\x04\"\xf8\x02\n\x07\x43puInfo\x12\x0c\n\x04name\x18\x01 \x01(\t\x12\x16\n\x0eisa_extensions\x18\x02 \x03(\t\x12\x18\n\x10\x63pufreq_governor\x18\x03 \x01(\t\x12\x16\n\x0e\x63ore_clock_kHz\x18\x04 \x03(\x05\x12\x13\n\x0b\x63ore_temp_C\x18\x05 \x03(\x05\x12\x0c\n\x04load\x18\x06 \x03(\x02\x12\x11\n\tload_user\x18\x07 \x01(\x02\x12\x10\n\x08load_sys\x18\x08 \x01(\x02\x12\x11\n\tload_nice\x18\t \x01(\x02\x12\x11\n\tload_idle\x18\n \x01(\x02\x12\x11\n\tload_wait\x18\x0b \x01(\x02\x12\r\n\x05tasks\x18\x14 \x01(\r\x12\x16\n\x0etasks_runnable\x18\x15 \x01(\r\x12\x15\n\rtasks_running\x18\x16 \x01(\r\x12\x15\n\rtasks_stopped\x18\x17 \x01(\r\x12\x14\n\x0ctasks_zombie\x18\x18 \x01(\r\x12\x13\n\x0buptime_msec\x18\x1e \x01(\x04\x12\x14\n\x0cload_average\x18( \x03(\x02\"\xa1\x01\n\x07MemInfo\x12\r\n\x05total\x18\x01 \x01(\x04\x12\x0c\n\x04\x66ree\x18\x02 \x01(\x04\x12\x0c\n\x04used\x18\x03 \x01(\x04\x12\x0f\n\x07\x62uffers\x18\x04 \x01(\x04\x12\r\n\x05\x63\x61\x63he\x18\x05 \x01(\x04\x12\x11\n\tavailable\x18\x06 \x01(\x04\x12\x12\n\nswap_total\x18\n \x01(\x04\x12\x11\n\tswap_free\x18\x0b \x01(\x04\x12\x11\n\tswap_used\x18\x0c \x01(\x04\"\x08\n\x06IoInfo\"2\n\nGpuInfoApp\x12\x11\n\tvram_used\x18\x01 \x01(\x04\x12\x11\n\tpipelines\x18\x02 \x01(\x04\"_\n\nCpuInfoApp\x12\x1c\n\x14\x63pu_usage_total_usec\x18\x01 \x01(\x04\x12\x1d\n\x15wall_clock_total_usec\x18\x02 \x01(\x04\x12\x14\n\x0cthread_count\x18\x03 \x01(\r\"\x99\x01\n\nMemInfoApp\x12\x0b\n\x03rss\x18\x01 \x01(\x04\x12\x0c\n\x04text\x18\x02 \x01(\x04\x12\x0c\n\x04swap\x18\x03 \x01(\x04\x12\x0c\n\x04\x63ode\x18\x04 \x01(\x04\x12\x0e\n\x06\x63\x61\x63hed\x18\x05 \x01(\x04\x12\x0e\n\x06locked\x18\x06 \x01(\x04\x12\x0e\n\x06sahred\x18\x07 \x01(\x04\x12\x11\n\tmaj_fault\x18\n \x01(\x04\x12\x11\n\tmin_fault\x18\x0b \x01(\x04\"\x0b\n\tIoInfoAppb\x06proto3'
+  serialized_pb=b'\n\x0emangohud.proto\"M\n\nRpcMessage\x12\x18\n\x10protocol_version\x18\x01 \x01(\r\x12\x0e\n\x06rpc_id\x18\x02 \x01(\x04\x12\x15\n\x03msg\x18\x06 \x01(\x0b\x32\x08.Message\"\xc9\t\n\x07Message\x12\x18\n\x10protocol_version\x18\x01 \x01(\r\x12(\n\x0b\x63lient_type\x18\x02 \x01(\x0e\x32\x13.Message.ClientType\x12\x15\n\x05\x61live\x18\x03 \x01(\x0b\x32\x06.Alive\x12#\n\x0c\x61rchitecture\x18\n \x01(\x0b\x32\r.Architecture\x12\x10\n\x08nodename\x18\x0b \x01(\t\x12\x0b\n\x03pid\x18\x0c \x01(\x04\x12\x0b\n\x03uid\x18\r \x01(\x04\x12\x0b\n\x03gid\x18\x0e \x01(\x04\x12\x0e\n\x06groups\x18\x0f \x01(\t\x12\x10\n\x08username\x18\x10 \x01(\t\x12\x14\n\x0cprogram_name\x18\x11 \x01(\t\x12\x14\n\x0cwine_version\x18\x12 \x01(\t\x12\x1c\n\x14unique_in_process_id\x18\x13 \x01(\x04\x12 \n\x0brender_info\x18\x14 \x01(\x0b\x32\x0b.RenderInfo\x12!\n\tblacklist\x18\x1e \x01(\x0b\x32\x0e.BlackListInfo\x12&\n\x0e\x63onfig_request\x18\x1f \x01(\x0b\x32\x0e.ConfigRequest\x12\x1c\n\x0b\x63onfig_data\x18  \x01(\x0b\x32\x07.Config\x12$\n\rconfig_reload\x18! \x01(\x0b\x32\r.ConfigReload\x12\x1d\n\ttimestamp\x18( \x01(\x0b\x32\n.Timestamp\x12\x17\n\x0f\x61pp_uptime_msec\x18) \x01(\x04\x12\x0b\n\x03\x66ps\x18\x32 \x01(\x02\x12\x1e\n\nframetimes\x18\x33 \x03(\x0b\x32\n.FrameTime\x12\x0e\n\x06\x66rames\x18\x34 \x01(\x04\x12\x1e\n\x16last_present_time_usec\x18\x35 \x01(\x04\x12\x1b\n\x13\x66rames_since_update\x18\x36 \x01(\r\x12\x1c\n\x14last_fps_update_usec\x18\x37 \x01(\x04\x12\x19\n\x11stream_frametimes\x18< \x01(\x08\x12\x18\n\x0f\x63hange_show_hud\x18\xa5\x08 \x01(\x08\x12\x10\n\x08show_hud\x18= \x01(\x08\x12\x14\n\x0c\x66rame_limits\x18> \x03(\x02\x12\r\n\x05vsync\x18? \x01(\x08\x12\x1b\n\x13media_player_string\x18\x46 \x01(\t\x12\x15\n\rextra_string1\x18G \x01(\t\x12\x15\n\rextra_string2\x18H \x01(\t\x12\x1a\n\x08gpu_info\x18P \x03(\x0b\x32\x08.GpuInfo\x12\x1a\n\x08\x63pu_info\x18Q \x01(\x0b\x32\x08.CpuInfo\x12\"\n\x10\x63pu_info_details\x18R \x01(\x0b\x32\x08.CpuInfo\x12\x1a\n\x08mem_info\x18S \x01(\x0b\x32\x08.MemInfo\x12\x18\n\x07io_info\x18T \x03(\x0b\x32\x07.IoInfo\x12!\n\x0c\x61pp_gpu_info\x18Z \x03(\x0b\x32\x0b.GpuInfoApp\x12!\n\x0c\x61pp_cpu_info\x18[ \x01(\x0b\x32\x0b.CpuInfoApp\x12!\n\x0c\x61pp_mem_info\x18] \x01(\x0b\x32\x0b.MemInfoApp\x12\x1f\n\x0b\x61pp_io_info\x18^ \x01(\x0b\x32\n.IoInfoApp\x12\x19\n\x07\x63lients\x18\x64 \x03(\x0b\x32\x08.Message\"*\n\nClientType\x12\x07\n\x03\x41PP\x10\x00\x12\n\n\x06SERVER\x10\x01\x12\x07\n\x03GUI\x10\x02\"\x16\n\x05\x41live\x12\r\n\x05\x64ummy\x18\x01 \x01(\r\"\xcc\x02\n\x0c\x41rchitecture\x12\x1c\n\x02os\x18\x01 \x01(\x0e\x32\x10.Architecture.OS\x12\x0e\n\x06\x64istro\x18\x02 \x01(\t\x12\x16\n\x0e\x64istro_version\x18\x03 \x01(\t\x12\x16\n\x0ekernel_version\x18\x04 \x01(\t\x12\x14\n\x0c\x61rchitecture\x18\x05 \x01(\t\x12 \n\x18mangohud_library_version\x18\x06 \x01(\t\x12\x1e\n\x16mangohud_server_verion\x18\x07 \x01(\t\x12\x1c\n\x14mangohud_gui_version\x18\x08 \x01(\t\"h\n\x02OS\x12\t\n\x05LINUX\x10\x00\x12\x0b\n\x07\x46REEBSD\x10\x01\x12\t\n\x05MACOS\x10\x02\x12\x0b\n\x07WINDOWS\x10\x03\x12\x0b\n\x07\x41NDROID\x10\x04\x12\x0c\n\x08REACT_OS\x10\x05\x12\t\n\x05HAIKU\x10\x06\x12\x0c\n\x08GNU_HURD\x10\x07\"\xe9\x04\n\nRenderInfo\x12\x0e\n\x06opengl\x18\x01 \x01(\x08\x12\x0e\n\x06vulkan\x18\x02 \x01(\x08\x12\x16\n\x0eopengl_version\x18\n \x01(\t\x12\x1a\n\x12opengl_device_name\x18\x0b \x01(\t\x12\x1c\n\x14opengl_version_major\x18\x0c \x01(\x05\x12\x1c\n\x14opengl_version_minor\x18\r \x01(\x05\x12\x16\n\x0eopengl_is_gles\x18\x0e \x01(\x08\x12\x19\n\x11opengl_extensions\x18\x0f \x03(\t\x12\x13\n\x0b\x65ngine_name\x18\x14 \x01(\t\x12\x16\n\x0e\x65ngine_version\x18\x15 \x01(\t\x12\x13\n\x0b\x64\x65vice_name\x18\x16 \x01(\t\x12\x10\n\x08gpu_name\x18\x17 \x01(\t\x12\x13\n\x0b\x64river_name\x18\x18 \x01(\t\x12\x1c\n\x14vulkan_version_major\x18\x19 \x01(\x05\x12\x1c\n\x14vulkan_version_minor\x18\x1a \x01(\x05\x12\x1c\n\x14vulkan_version_patch\x18\x1b \x01(\x05\x12%\n\x1dvulkan_instance_layers_active\x18\x1c \x03(\t\x12\"\n\x1avulkan_instance_extensions\x18\x1d \x03(\t\x12*\n\"vulkan_device_extensions_available\x18\x1e \x03(\t\x12(\n vulkan_device_extensions_enabled\x18\x1f \x03(\t\x12!\n\x19vulkan_validation_enabled\x18  \x01(\x08\x12\x11\n\tdevice_id\x18( \x01(\x05\"=\n\rBlackListInfo\x12\x13\n\x0b\x62lacklisted\x18\x01 \x01(\x08\x12\x17\n\x0f\x62lacklist_names\x18\x02 \x03(\t\"I\n\rConfigRequest\x12\x14\n\x0cmachine_name\x18\x01 \x01(\t\x12\x14\n\x0cprogram_name\x18\x02 \x01(\t\x12\x0c\n\x04wine\x18\x03 \x01(\x08\"#\n\x0c\x43onfigReload\x12\x13\n\x0b\x63onfig_path\x18\x01 \x01(\t\"\xc3\x03\n\x06\x43onfig\x12\"\n\x1a\x66ps_sampling_interval_msec\x18\x01 \x01(\r\x12\x10\n\x08show_hud\x18\x02 \x01(\x08\x12)\n\x0chud_geometry\x18\x03 \x01(\x0b\x32\x13.Config.HudGeometry\x12!\n\x08\x65lements\x18\x04 \x03(\x0b\x32\x0f.Config.Element\x12#\n\x0etoggle_logging\x18\x05 \x01(\x0b\x32\x0b.Config.Key\x12\x1f\n\ntoggle_hud\x18\x06 \x01(\x0b\x32\x0b.Config.Key\x12\x1f\n\nreload_cfg\x18\x07 \x01(\x0b\x32\x0b.Config.Key\x1aP\n\x0bHudGeometry\x12\r\n\x05width\x18\x01 \x01(\r\x12\x0e\n\x06height\x18\x02 \x01(\r\x12\x10\n\x08offset_x\x18\x03 \x01(\r\x12\x10\n\x08offset_y\x18\x04 \x01(\r\x1a\x61\n\x07\x45lement\x12\x0c\n\x04name\x18\x01 \x01(\t\x12\x0c\n\x04\x66ont\x18\x02 \x01(\t\x12\r\n\x05\x63olor\x18\x03 \x01(\t\x12\x0c\n\x04text\x18\x04 \x01(\t\x12\r\n\x05value\x18\x05 \x01(\t\x12\x0e\n\x06suffix\x18\x06 \x01(\t\x1a\x19\n\x03Key\x12\x12\n\nkeybinding\x18\x01 \x01(\t\"\xa0\x02\n\tTimestamp\x12\x30\n\x0c\x63lock_source\x18\x01 \x01(\x0e\x32\x1a.Timestamp.TimestampSource\x12\x16\n\x0etimestamp_usec\x18\x02 \x01(\x04\"\xc8\x01\n\x0fTimestampSource\x12\x11\n\rMONOTONIC_RAW\x10\x00\x12\r\n\tMONOTONIC\x10\x01\x12\x14\n\x10MONOTONIC_COARSE\x10\x02\x12\x0c\n\x08\x42OOTTIME\x10\x03\x12\x0c\n\x08REALTIME\x10\x04\x12\x13\n\x0fREALTIME_COARSE\x10\x05\x12\x07\n\x03TAI\x10\x06\x12\x14\n\x10GETTIMEOFDAY_UTC\x10\x07\x12\x08\n\x04TIME\x10\t\x12#\n\x1fWINDOWS_QueryPerformanceCounter\x10\n\"E\n\tFrameTime\x12\x16\n\x0etimestamp_usec\x18\x01 \x01(\x04\x12\r\n\x05index\x18\x02 \x01(\r\x12\x11\n\ttime_usec\x18\x03 \x01(\r\"\xa1\x04\n\x07GpuInfo\x12\x0b\n\x03\x62us\x18\x01 \x01(\x05\x12\x14\n\x0cpci_dev_info\x18\x02 \x01(\t\x12\x10\n\x08gpu_name\x18\x03 \x01(\t\x12\x13\n\x0b\x63ore_temp_C\x18\n \x01(\x05\x12\x12\n\nmem_temp_C\x18\x0b \x01(\x05\x12\x15\n\rfan_speed_RPM\x18\x0c \x01(\x05\x12\x16\n\x0e\x63ore_clock_kHz\x18\x14 \x01(\x05\x12\x1a\n\x12\x63ore_clock_kHz_max\x18\x15 \x01(\x05\x12\x15\n\rmem_clock_kHz\x18\x16 \x01(\x05\x12\x19\n\x11mem_clock_max_kHz\x18\x17 \x01(\x05\x12\x10\n\x08gpu_load\x18\x1e \x01(\x02\x12\x0f\n\x07power_W\x18\x1f \x01(\x02\x12\x14\n\x0c\x65vent_engine\x18\x33 \x01(\x02\x12\x12\n\ntesselator\x18\x34 \x01(\x02\x12\x19\n\x11texture_addresser\x18\x35 \x01(\x02\x12\x15\n\rshader_export\x18\x36 \x01(\x02\x12#\n\x1bsequencer_instruction_cache\x18\x37 \x01(\x02\x12\x1b\n\x13shader_interpolator\x18\x38 \x01(\x02\x12\x16\n\x0escan_converter\x18\x39 \x01(\x02\x12\x1a\n\x12primitive_assembly\x18: \x01(\x02\x12\x13\n\x0b\x64\x65pth_block\x18; \x01(\x02\x12\x13\n\x0b\x63olor_block\x18< \x01(\x02\x12\x0b\n\x03gtt\x18= \x01(\x04\x12\x0f\n\x07gtt_max\x18> \x01(\x04\"\xf8\x02\n\x07\x43puInfo\x12\x0c\n\x04name\x18\x01 \x01(\t\x12\x16\n\x0eisa_extensions\x18\x02 \x03(\t\x12\x18\n\x10\x63pufreq_governor\x18\x03 \x01(\t\x12\x16\n\x0e\x63ore_clock_kHz\x18\x04 \x03(\x05\x12\x13\n\x0b\x63ore_temp_C\x18\x05 \x03(\x05\x12\x0c\n\x04load\x18\x06 \x03(\x02\x12\x11\n\tload_user\x18\x07 \x01(\x02\x12\x10\n\x08load_sys\x18\x08 \x01(\x02\x12\x11\n\tload_nice\x18\t \x01(\x02\x12\x11\n\tload_idle\x18\n \x01(\x02\x12\x11\n\tload_wait\x18\x0b \x01(\x02\x12\r\n\x05tasks\x18\x14 \x01(\r\x12\x16\n\x0etasks_runnable\x18\x15 \x01(\r\x12\x15\n\rtasks_running\x18\x16 \x01(\r\x12\x15\n\rtasks_stopped\x18\x17 \x01(\r\x12\x14\n\x0ctasks_zombie\x18\x18 \x01(\r\x12\x13\n\x0buptime_msec\x18\x1e \x01(\x04\x12\x14\n\x0cload_average\x18( \x03(\x02\"\xa1\x01\n\x07MemInfo\x12\r\n\x05total\x18\x01 \x01(\x04\x12\x0c\n\x04\x66ree\x18\x02 \x01(\x04\x12\x0c\n\x04used\x18\x03 \x01(\x04\x12\x0f\n\x07\x62uffers\x18\x04 \x01(\x04\x12\r\n\x05\x63\x61\x63he\x18\x05 \x01(\x04\x12\x11\n\tavailable\x18\x06 \x01(\x04\x12\x12\n\nswap_total\x18\n \x01(\x04\x12\x11\n\tswap_free\x18\x0b \x01(\x04\x12\x11\n\tswap_used\x18\x0c \x01(\x04\"\x08\n\x06IoInfo\"2\n\nGpuInfoApp\x12\x11\n\tvram_used\x18\x01 \x01(\x04\x12\x11\n\tpipelines\x18\x02 \x01(\x04\"_\n\nCpuInfoApp\x12\x1c\n\x14\x63pu_usage_total_usec\x18\x01 \x01(\x04\x12\x1d\n\x15wall_clock_total_usec\x18\x02 \x01(\x04\x12\x14\n\x0cthread_count\x18\x03 \x01(\r\"\x99\x01\n\nMemInfoApp\x12\x0b\n\x03rss\x18\x01 \x01(\x04\x12\x0c\n\x04text\x18\x02 \x01(\x04\x12\x0c\n\x04swap\x18\x03 \x01(\x04\x12\x0c\n\x04\x63ode\x18\x04 \x01(\x04\x12\x0e\n\x06\x63\x61\x63hed\x18\x05 \x01(\x04\x12\x0e\n\x06locked\x18\x06 \x01(\x04\x12\x0e\n\x06sahred\x18\x07 \x01(\x04\x12\x11\n\tmaj_fault\x18\n \x01(\x04\x12\x11\n\tmin_fault\x18\x0b \x01(\x04\"\x0b\n\tIoInfoAppb\x06proto3'
 )
 
 
@@ -49,8 +49,8 @@ _MESSAGE_CLIENTTYPE = _descriptor.EnumDescriptor(
   ],
   containing_type=None,
   serialized_options=None,
-  serialized_start=1225,
-  serialized_end=1267,
+  serialized_start=1281,
+  serialized_end=1323,
 )
 _sym_db.RegisterEnumDescriptor(_MESSAGE_CLIENTTYPE)
 
@@ -104,8 +104,8 @@ _ARCHITECTURE_OS = _descriptor.EnumDescriptor(
   ],
   containing_type=None,
   serialized_options=None,
-  serialized_start=1522,
-  serialized_end=1626,
+  serialized_start=1578,
+  serialized_end=1682,
 )
 _sym_db.RegisterEnumDescriptor(_ARCHITECTURE_OS)
 
@@ -169,8 +169,8 @@ _TIMESTAMP_TIMESTAMPSOURCE = _descriptor.EnumDescriptor(
   ],
   containing_type=None,
   serialized_options=None,
-  serialized_start=2966,
-  serialized_end=3166,
+  serialized_start=3022,
+  serialized_end=3222,
 )
 _sym_db.RegisterEnumDescriptor(_TIMESTAMP_TIMESTAMPSOURCE)
 
@@ -314,210 +314,224 @@ _MESSAGE = _descriptor.Descriptor(
       is_extension=False, extension_scope=None,
       serialized_options=None, file=DESCRIPTOR,  create_key=_descriptor._internal_create_key),
     _descriptor.FieldDescriptor(
-      name='render_info', full_name='Message.render_info', index=12,
+      name='unique_in_process_id', full_name='Message.unique_in_process_id', index=12,
+      number=19, type=4, cpp_type=4, label=1,
+      has_default_value=False, default_value=0,
+      message_type=None, enum_type=None, containing_type=None,
+      is_extension=False, extension_scope=None,
+      serialized_options=None, file=DESCRIPTOR,  create_key=_descriptor._internal_create_key),
+    _descriptor.FieldDescriptor(
+      name='render_info', full_name='Message.render_info', index=13,
       number=20, type=11, cpp_type=10, label=1,
       has_default_value=False, default_value=None,
       message_type=None, enum_type=None, containing_type=None,
       is_extension=False, extension_scope=None,
       serialized_options=None, file=DESCRIPTOR,  create_key=_descriptor._internal_create_key),
     _descriptor.FieldDescriptor(
-      name='blacklist', full_name='Message.blacklist', index=13,
+      name='blacklist', full_name='Message.blacklist', index=14,
       number=30, type=11, cpp_type=10, label=1,
       has_default_value=False, default_value=None,
       message_type=None, enum_type=None, containing_type=None,
       is_extension=False, extension_scope=None,
       serialized_options=None, file=DESCRIPTOR,  create_key=_descriptor._internal_create_key),
     _descriptor.FieldDescriptor(
-      name='config_request', full_name='Message.config_request', index=14,
+      name='config_request', full_name='Message.config_request', index=15,
       number=31, type=11, cpp_type=10, label=1,
       has_default_value=False, default_value=None,
       message_type=None, enum_type=None, containing_type=None,
       is_extension=False, extension_scope=None,
       serialized_options=None, file=DESCRIPTOR,  create_key=_descriptor._internal_create_key),
     _descriptor.FieldDescriptor(
-      name='config_data', full_name='Message.config_data', index=15,
+      name='config_data', full_name='Message.config_data', index=16,
       number=32, type=11, cpp_type=10, label=1,
       has_default_value=False, default_value=None,
       message_type=None, enum_type=None, containing_type=None,
       is_extension=False, extension_scope=None,
       serialized_options=None, file=DESCRIPTOR,  create_key=_descriptor._internal_create_key),
     _descriptor.FieldDescriptor(
-      name='config_reload', full_name='Message.config_reload', index=16,
+      name='config_reload', full_name='Message.config_reload', index=17,
       number=33, type=11, cpp_type=10, label=1,
       has_default_value=False, default_value=None,
       message_type=None, enum_type=None, containing_type=None,
       is_extension=False, extension_scope=None,
       serialized_options=None, file=DESCRIPTOR,  create_key=_descriptor._internal_create_key),
     _descriptor.FieldDescriptor(
-      name='timestamp', full_name='Message.timestamp', index=17,
+      name='timestamp', full_name='Message.timestamp', index=18,
       number=40, type=11, cpp_type=10, label=1,
       has_default_value=False, default_value=None,
       message_type=None, enum_type=None, containing_type=None,
       is_extension=False, extension_scope=None,
       serialized_options=None, file=DESCRIPTOR,  create_key=_descriptor._internal_create_key),
     _descriptor.FieldDescriptor(
-      name='app_uptime_msec', full_name='Message.app_uptime_msec', index=18,
+      name='app_uptime_msec', full_name='Message.app_uptime_msec', index=19,
       number=41, type=4, cpp_type=4, label=1,
       has_default_value=False, default_value=0,
       message_type=None, enum_type=None, containing_type=None,
       is_extension=False, extension_scope=None,
       serialized_options=None, file=DESCRIPTOR,  create_key=_descriptor._internal_create_key),
     _descriptor.FieldDescriptor(
-      name='fps', full_name='Message.fps', index=19,
+      name='fps', full_name='Message.fps', index=20,
       number=50, type=2, cpp_type=6, label=1,
       has_default_value=False, default_value=float(0),
       message_type=None, enum_type=None, containing_type=None,
       is_extension=False, extension_scope=None,
       serialized_options=None, file=DESCRIPTOR,  create_key=_descriptor._internal_create_key),
     _descriptor.FieldDescriptor(
-      name='frametimes', full_name='Message.frametimes', index=20,
+      name='frametimes', full_name='Message.frametimes', index=21,
       number=51, type=11, cpp_type=10, label=3,
       has_default_value=False, default_value=[],
       message_type=None, enum_type=None, containing_type=None,
       is_extension=False, extension_scope=None,
       serialized_options=None, file=DESCRIPTOR,  create_key=_descriptor._internal_create_key),
     _descriptor.FieldDescriptor(
-      name='frames', full_name='Message.frames', index=21,
+      name='frames', full_name='Message.frames', index=22,
       number=52, type=4, cpp_type=4, label=1,
       has_default_value=False, default_value=0,
       message_type=None, enum_type=None, containing_type=None,
       is_extension=False, extension_scope=None,
       serialized_options=None, file=DESCRIPTOR,  create_key=_descriptor._internal_create_key),
     _descriptor.FieldDescriptor(
-      name='last_present_time_usec', full_name='Message.last_present_time_usec', index=22,
+      name='last_present_time_usec', full_name='Message.last_present_time_usec', index=23,
       number=53, type=4, cpp_type=4, label=1,
       has_default_value=False, default_value=0,
       message_type=None, enum_type=None, containing_type=None,
       is_extension=False, extension_scope=None,
       serialized_options=None, file=DESCRIPTOR,  create_key=_descriptor._internal_create_key),
     _descriptor.FieldDescriptor(
-      name='frames_since_update', full_name='Message.frames_since_update', index=23,
+      name='frames_since_update', full_name='Message.frames_since_update', index=24,
       number=54, type=13, cpp_type=3, label=1,
       has_default_value=False, default_value=0,
       message_type=None, enum_type=None, containing_type=None,
       is_extension=False, extension_scope=None,
       serialized_options=None, file=DESCRIPTOR,  create_key=_descriptor._internal_create_key),
     _descriptor.FieldDescriptor(
-      name='last_fps_update_usec', full_name='Message.last_fps_update_usec', index=24,
+      name='last_fps_update_usec', full_name='Message.last_fps_update_usec', index=25,
       number=55, type=4, cpp_type=4, label=1,
       has_default_value=False, default_value=0,
       message_type=None, enum_type=None, containing_type=None,
       is_extension=False, extension_scope=None,
       serialized_options=None, file=DESCRIPTOR,  create_key=_descriptor._internal_create_key),
     _descriptor.FieldDescriptor(
-      name='stream_frametimes', full_name='Message.stream_frametimes', index=25,
+      name='stream_frametimes', full_name='Message.stream_frametimes', index=26,
       number=60, type=8, cpp_type=7, label=1,
       has_default_value=False, default_value=False,
       message_type=None, enum_type=None, containing_type=None,
       is_extension=False, extension_scope=None,
       serialized_options=None, file=DESCRIPTOR,  create_key=_descriptor._internal_create_key),
     _descriptor.FieldDescriptor(
-      name='show_hud', full_name='Message.show_hud', index=26,
+      name='change_show_hud', full_name='Message.change_show_hud', index=27,
+      number=1061, type=8, cpp_type=7, label=1,
+      has_default_value=False, default_value=False,
+      message_type=None, enum_type=None, containing_type=None,
+      is_extension=False, extension_scope=None,
+      serialized_options=None, file=DESCRIPTOR,  create_key=_descriptor._internal_create_key),
+    _descriptor.FieldDescriptor(
+      name='show_hud', full_name='Message.show_hud', index=28,
       number=61, type=8, cpp_type=7, label=1,
       has_default_value=False, default_value=False,
       message_type=None, enum_type=None, containing_type=None,
       is_extension=False, extension_scope=None,
       serialized_options=None, file=DESCRIPTOR,  create_key=_descriptor._internal_create_key),
     _descriptor.FieldDescriptor(
-      name='frame_limits', full_name='Message.frame_limits', index=27,
+      name='frame_limits', full_name='Message.frame_limits', index=29,
       number=62, type=2, cpp_type=6, label=3,
       has_default_value=False, default_value=[],
       message_type=None, enum_type=None, containing_type=None,
       is_extension=False, extension_scope=None,
       serialized_options=None, file=DESCRIPTOR,  create_key=_descriptor._internal_create_key),
     _descriptor.FieldDescriptor(
-      name='vsync', full_name='Message.vsync', index=28,
+      name='vsync', full_name='Message.vsync', index=30,
       number=63, type=8, cpp_type=7, label=1,
       has_default_value=False, default_value=False,
       message_type=None, enum_type=None, containing_type=None,
       is_extension=False, extension_scope=None,
       serialized_options=None, file=DESCRIPTOR,  create_key=_descriptor._internal_create_key),
     _descriptor.FieldDescriptor(
-      name='media_player_string', full_name='Message.media_player_string', index=29,
+      name='media_player_string', full_name='Message.media_player_string', index=31,
       number=70, type=9, cpp_type=9, label=1,
       has_default_value=False, default_value=b"".decode('utf-8'),
       message_type=None, enum_type=None, containing_type=None,
       is_extension=False, extension_scope=None,
       serialized_options=None, file=DESCRIPTOR,  create_key=_descriptor._internal_create_key),
     _descriptor.FieldDescriptor(
-      name='extra_string1', full_name='Message.extra_string1', index=30,
+      name='extra_string1', full_name='Message.extra_string1', index=32,
       number=71, type=9, cpp_type=9, label=1,
       has_default_value=False, default_value=b"".decode('utf-8'),
       message_type=None, enum_type=None, containing_type=None,
       is_extension=False, extension_scope=None,
       serialized_options=None, file=DESCRIPTOR,  create_key=_descriptor._internal_create_key),
     _descriptor.FieldDescriptor(
-      name='extra_string2', full_name='Message.extra_string2', index=31,
+      name='extra_string2', full_name='Message.extra_string2', index=33,
       number=72, type=9, cpp_type=9, label=1,
       has_default_value=False, default_value=b"".decode('utf-8'),
       message_type=None, enum_type=None, containing_type=None,
       is_extension=False, extension_scope=None,
       serialized_options=None, file=DESCRIPTOR,  create_key=_descriptor._internal_create_key),
     _descriptor.FieldDescriptor(
-      name='gpu_info', full_name='Message.gpu_info', index=32,
+      name='gpu_info', full_name='Message.gpu_info', index=34,
       number=80, type=11, cpp_type=10, label=3,
       has_default_value=False, default_value=[],
       message_type=None, enum_type=None, containing_type=None,
       is_extension=False, extension_scope=None,
       serialized_options=None, file=DESCRIPTOR,  create_key=_descriptor._internal_create_key),
     _descriptor.FieldDescriptor(
-      name='cpu_info', full_name='Message.cpu_info', index=33,
+      name='cpu_info', full_name='Message.cpu_info', index=35,
       number=81, type=11, cpp_type=10, label=1,
       has_default_value=False, default_value=None,
       message_type=None, enum_type=None, containing_type=None,
       is_extension=False, extension_scope=None,
       serialized_options=None, file=DESCRIPTOR,  create_key=_descriptor._internal_create_key),
     _descriptor.FieldDescriptor(
-      name='cpu_info_details', full_name='Message.cpu_info_details', index=34,
+      name='cpu_info_details', full_name='Message.cpu_info_details', index=36,
       number=82, type=11, cpp_type=10, label=1,
       has_default_value=False, default_value=None,
       message_type=None, enum_type=None, containing_type=None,
       is_extension=False, extension_scope=None,
       serialized_options=None, file=DESCRIPTOR,  create_key=_descriptor._internal_create_key),
     _descriptor.FieldDescriptor(
-      name='mem_info', full_name='Message.mem_info', index=35,
+      name='mem_info', full_name='Message.mem_info', index=37,
       number=83, type=11, cpp_type=10, label=1,
       has_default_value=False, default_value=None,
       message_type=None, enum_type=None, containing_type=None,
       is_extension=False, extension_scope=None,
       serialized_options=None, file=DESCRIPTOR,  create_key=_descriptor._internal_create_key),
     _descriptor.FieldDescriptor(
-      name='io_info', full_name='Message.io_info', index=36,
+      name='io_info', full_name='Message.io_info', index=38,
       number=84, type=11, cpp_type=10, label=3,
       has_default_value=False, default_value=[],
       message_type=None, enum_type=None, containing_type=None,
       is_extension=False, extension_scope=None,
       serialized_options=None, file=DESCRIPTOR,  create_key=_descriptor._internal_create_key),
     _descriptor.FieldDescriptor(
-      name='app_gpu_info', full_name='Message.app_gpu_info', index=37,
+      name='app_gpu_info', full_name='Message.app_gpu_info', index=39,
       number=90, type=11, cpp_type=10, label=3,
       has_default_value=False, default_value=[],
       message_type=None, enum_type=None, containing_type=None,
       is_extension=False, extension_scope=None,
       serialized_options=None, file=DESCRIPTOR,  create_key=_descriptor._internal_create_key),
     _descriptor.FieldDescriptor(
-      name='app_cpu_info', full_name='Message.app_cpu_info', index=38,
+      name='app_cpu_info', full_name='Message.app_cpu_info', index=40,
       number=91, type=11, cpp_type=10, label=1,
       has_default_value=False, default_value=None,
       message_type=None, enum_type=None, containing_type=None,
       is_extension=False, extension_scope=None,
       serialized_options=None, file=DESCRIPTOR,  create_key=_descriptor._internal_create_key),
     _descriptor.FieldDescriptor(
-      name='app_mem_info', full_name='Message.app_mem_info', index=39,
+      name='app_mem_info', full_name='Message.app_mem_info', index=41,
       number=93, type=11, cpp_type=10, label=1,
       has_default_value=False, default_value=None,
       message_type=None, enum_type=None, containing_type=None,
       is_extension=False, extension_scope=None,
       serialized_options=None, file=DESCRIPTOR,  create_key=_descriptor._internal_create_key),
     _descriptor.FieldDescriptor(
-      name='app_io_info', full_name='Message.app_io_info', index=40,
+      name='app_io_info', full_name='Message.app_io_info', index=42,
       number=94, type=11, cpp_type=10, label=1,
       has_default_value=False, default_value=None,
       message_type=None, enum_type=None, containing_type=None,
       is_extension=False, extension_scope=None,
       serialized_options=None, file=DESCRIPTOR,  create_key=_descriptor._internal_create_key),
     _descriptor.FieldDescriptor(
-      name='clients', full_name='Message.clients', index=41,
+      name='clients', full_name='Message.clients', index=43,
       number=100, type=11, cpp_type=10, label=3,
       has_default_value=False, default_value=[],
       message_type=None, enum_type=None, containing_type=None,
@@ -537,7 +551,7 @@ _MESSAGE = _descriptor.Descriptor(
   oneofs=[
   ],
   serialized_start=98,
-  serialized_end=1267,
+  serialized_end=1323,
 )
 
 
@@ -568,8 +582,8 @@ _ALIVE = _descriptor.Descriptor(
   extension_ranges=[],
   oneofs=[
   ],
-  serialized_start=1269,
-  serialized_end=1291,
+  serialized_start=1325,
+  serialized_end=1347,
 )
 
 
@@ -650,8 +664,8 @@ _ARCHITECTURE = _descriptor.Descriptor(
   extension_ranges=[],
   oneofs=[
   ],
-  serialized_start=1294,
-  serialized_end=1626,
+  serialized_start=1350,
+  serialized_end=1682,
 )
 
 
@@ -829,8 +843,8 @@ _RENDERINFO = _descriptor.Descriptor(
   extension_ranges=[],
   oneofs=[
   ],
-  serialized_start=1629,
-  serialized_end=2246,
+  serialized_start=1685,
+  serialized_end=2302,
 )
 
 
@@ -868,8 +882,8 @@ _BLACKLISTINFO = _descriptor.Descriptor(
   extension_ranges=[],
   oneofs=[
   ],
-  serialized_start=2248,
-  serialized_end=2309,
+  serialized_start=2304,
+  serialized_end=2365,
 )
 
 
@@ -914,8 +928,8 @@ _CONFIGREQUEST = _descriptor.Descriptor(
   extension_ranges=[],
   oneofs=[
   ],
-  serialized_start=2311,
-  serialized_end=2384,
+  serialized_start=2367,
+  serialized_end=2440,
 )
 
 
@@ -946,8 +960,8 @@ _CONFIGRELOAD = _descriptor.Descriptor(
   extension_ranges=[],
   oneofs=[
   ],
-  serialized_start=2386,
-  serialized_end=2421,
+  serialized_start=2442,
+  serialized_end=2477,
 )
 
 
@@ -999,8 +1013,8 @@ _CONFIG_HUDGEOMETRY = _descriptor.Descriptor(
   extension_ranges=[],
   oneofs=[
   ],
-  serialized_start=2669,
-  serialized_end=2749,
+  serialized_start=2725,
+  serialized_end=2805,
 )
 
 _CONFIG_ELEMENT = _descriptor.Descriptor(
@@ -1065,8 +1079,8 @@ _CONFIG_ELEMENT = _descriptor.Descriptor(
   extension_ranges=[],
   oneofs=[
   ],
-  serialized_start=2751,
-  serialized_end=2848,
+  serialized_start=2807,
+  serialized_end=2904,
 )
 
 _CONFIG_KEY = _descriptor.Descriptor(
@@ -1096,8 +1110,8 @@ _CONFIG_KEY = _descriptor.Descriptor(
   extension_ranges=[],
   oneofs=[
   ],
-  serialized_start=2850,
-  serialized_end=2875,
+  serialized_start=2906,
+  serialized_end=2931,
 )
 
 _CONFIG = _descriptor.Descriptor(
@@ -1169,8 +1183,8 @@ _CONFIG = _descriptor.Descriptor(
   extension_ranges=[],
   oneofs=[
   ],
-  serialized_start=2424,
-  serialized_end=2875,
+  serialized_start=2480,
+  serialized_end=2931,
 )
 
 
@@ -1209,8 +1223,8 @@ _TIMESTAMP = _descriptor.Descriptor(
   extension_ranges=[],
   oneofs=[
   ],
-  serialized_start=2878,
-  serialized_end=3166,
+  serialized_start=2934,
+  serialized_end=3222,
 )
 
 
@@ -1255,8 +1269,8 @@ _FRAMETIME = _descriptor.Descriptor(
   extension_ranges=[],
   oneofs=[
   ],
-  serialized_start=3168,
-  serialized_end=3237,
+  serialized_start=3224,
+  serialized_end=3293,
 )
 
 
@@ -1448,8 +1462,8 @@ _GPUINFO = _descriptor.Descriptor(
   extension_ranges=[],
   oneofs=[
   ],
-  serialized_start=3240,
-  serialized_end=3785,
+  serialized_start=3296,
+  serialized_end=3841,
 )
 
 
@@ -1599,8 +1613,8 @@ _CPUINFO = _descriptor.Descriptor(
   extension_ranges=[],
   oneofs=[
   ],
-  serialized_start=3788,
-  serialized_end=4164,
+  serialized_start=3844,
+  serialized_end=4220,
 )
 
 
@@ -1687,8 +1701,8 @@ _MEMINFO = _descriptor.Descriptor(
   extension_ranges=[],
   oneofs=[
   ],
-  serialized_start=4167,
-  serialized_end=4328,
+  serialized_start=4223,
+  serialized_end=4384,
 )
 
 
@@ -1712,8 +1726,8 @@ _IOINFO = _descriptor.Descriptor(
   extension_ranges=[],
   oneofs=[
   ],
-  serialized_start=4330,
-  serialized_end=4338,
+  serialized_start=4386,
+  serialized_end=4394,
 )
 
 
@@ -1751,8 +1765,8 @@ _GPUINFOAPP = _descriptor.Descriptor(
   extension_ranges=[],
   oneofs=[
   ],
-  serialized_start=4340,
-  serialized_end=4390,
+  serialized_start=4396,
+  serialized_end=4446,
 )
 
 
@@ -1797,8 +1811,8 @@ _CPUINFOAPP = _descriptor.Descriptor(
   extension_ranges=[],
   oneofs=[
   ],
-  serialized_start=4392,
-  serialized_end=4487,
+  serialized_start=4448,
+  serialized_end=4543,
 )
 
 
@@ -1885,8 +1899,8 @@ _MEMINFOAPP = _descriptor.Descriptor(
   extension_ranges=[],
   oneofs=[
   ],
-  serialized_start=4490,
-  serialized_end=4643,
+  serialized_start=4546,
+  serialized_end=4699,
 )
 
 
@@ -1910,8 +1924,8 @@ _IOINFOAPP = _descriptor.Descriptor(
   extension_ranges=[],
   oneofs=[
   ],
-  serialized_start=4645,
-  serialized_end=4656,
+  serialized_start=4701,
+  serialized_end=4712,
 )
 
 _RPCMESSAGE.fields_by_name['msg'].message_type = _MESSAGE

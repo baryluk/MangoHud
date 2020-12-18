@@ -35,6 +35,10 @@
 
 #include "common.h"
 
+//#define DEBUG(a) do { } while(0)
+#define DEBUG(a) do { a; } while(0)
+
+
 // Helper for setting values in protobuf by pointer.
 // Crude, but works.
 template<typename T>
@@ -46,11 +50,13 @@ inline T* a(const T&& value) {
 
 
 struct PerClientServerState {
-    int global_server_states_index;  // Index in `GlobalServerState::server_states` vector.
+    int global_server_states_index;  // Index in `GlobalServerState::per_client_server_states` vector.
 
     struct RpcClientState rpc_client_state;
 
     Message recent_state;
+
+    Message *request_change;
 };
 
 struct GlobalServerState {
@@ -66,6 +72,10 @@ struct RequestContext {
 
     // We want to be able to access all the other clients easily
     // to server GUI type client.
+    //
+    // This is used for two purposes:
+    //    For forwarding state of all non-GUI client to GUI clients.
+    //    For forwarding GUI client request back to original client.
     struct GlobalServerState *global_server_state;
 };
 
@@ -152,17 +162,54 @@ static int prepare_gui_response(Message* response, struct RequestContext *const 
 
     // Note: It is actually safe to pass 0 to 'calloc', it will return NULL.
     PB_MALLOC_ARRAY(response->clients, sub_responses.size());
-    for (int i = 0; i < sub_responses.size(); i++) {
+    for (size_t i = 0; i < sub_responses.size(); i++) {
          response->clients[i] = std::move(sub_responses[i]);
     }
 
     return 0;
 }
 
+// This can be used in request handler, but the pointer is not guaranteed to be
+// valid after existing request handler.
+// Use it only in the request handler and copy / modify data immedietly.
+//
+// Can return NULL.
+//
+// Do not free returned pointer.
+//
+// Message MUST contain nodename, uid and pid at least. And it should contain unique_in_process_id.
+//
+// TODO(baryluk): Don't crash if it doesn't.
 static struct PerClientServerState* find_server_state_for_client(struct GlobalServerState* global_server_state, const Message *const message) {
-    struct PerClientServerState* server_state_for_client = NULL;
+    assert(message);
+    assert(message->pid != NULL);
+    assert(message->uid != NULL);
+    assert(message->nodename != NULL);
 
-    return server_state_for_client;
+    for (auto& per_client_server_state : global_server_state->per_client_server_states) {
+         // TODO(baryluk): Right now we don't actually set the recent_state.nodename at all.
+         //if (strcmp(per_client_server_state->recent_state.nodename, message->nodename) != 0) {
+         //    continue;
+         //}
+
+         // TODO(baryluk): Check uid?
+
+         if (PB_IF(per_client_server_state->recent_state.pid, *(message->pid))) {
+             // Note, that it is possible to have multiple matches for the same pid.
+             if (message->unique_in_process_id != NULL) {
+                 if (PB_IF(per_client_server_state->recent_state.unique_in_process_id, *(message->unique_in_process_id))) {
+                     return per_client_server_state;
+                 } else {
+                     continue;
+                 }
+             }
+             // If unique_in_process_id is not set, return the first match for pid.
+             return per_client_server_state;
+             // TODO(baryluk): Or maybe return all of them?
+         }
+    }
+
+    return NULL;
 }
 
 
@@ -194,6 +241,7 @@ static int server_request_handler(const Message* const request, void* my_state) 
         pid = *request->pid;
     }
     PB_MAYBE_UPDATE(recent_state->uid, request->uid);
+    PB_MAYBE_UPDATE(recent_state->unique_in_process_id, request->unique_in_process_id);
     {
         if (recent_state->render_info == NULL) {
             PB_MALLOC_SET(recent_state->render_info, RenderInfo_init_zero);
@@ -262,6 +310,21 @@ static int server_request_handler(const Message* const request, void* my_state) 
     if (request->clients && request->clients_count) {
         for (int i = 0; i < request->clients_count; i++) {
              struct PerClientServerState *per_client_server_state_for_client = find_server_state_for_client(context->global_server_state, &(request->clients[i]));
+             if (per_client_server_state_for_client) {
+                 if (per_client_server_state_for_client->request_change != NULL) {
+                     // If other GUI client already requested change, or we didn't
+                     // processed the previous one, override it.
+                     pb_release(Message_fields, per_client_server_state_for_client->request_change);
+                     free(per_client_server_state_for_client->request_change);
+                     per_client_server_state_for_client->request_change = NULL;
+                 }
+                 PB_MALLOC_SET(per_client_server_state_for_client->request_change, Message_init_zero);
+                 // Move ownership of pointer. LOL.
+                 // This is really fishy. But lets try it.
+                 // We need to do it by value, becasue
+                 *(per_client_server_state_for_client->request_change) = std::move(request->clients[i]);
+                 request->clients[i] = Message_init_zero;  // Zero out the struct, without freeing anything!
+             }
         }
     }
 
@@ -275,6 +338,30 @@ static int server_request_handler(const Message* const request, void* my_state) 
 
         response->protocol_version = a<uint32_t>(1);
         response->client_type = a<Message_ClientType>(Message_ClientType_SERVER);
+
+        if (PB_IF(request->client_type, Message_ClientType_APP)) {
+            if (per_client_server_state->request_change) {
+                Message* const request_change = per_client_server_state->request_change;
+
+                if (request_change->show_hud != NULL) {
+                    // DEBUG(fprintf(stderr, "change proxing back to client for show_hud: case 1\n"));
+                    // Use swap, so we just steal the pointer with new malloc.
+                    // Also swap old show_hud (if any), into request_change,
+                    // so we free it if was set before.
+                    std::swap(request_change->show_hud, response->show_hud);
+                } else { // Proto3 Python workaround for lack of optional.
+                    if (PB_IF(request_change->change_show_hud, true)) {
+                        // DEBUG(fprintf(stderr, "change proxing back to client for show_hud: case 2\n"));
+                        PB_MALLOC_SET(response->change_show_hud, true);
+                        PB_MALLOC_SET(response->show_hud, false);
+                    }
+                }
+
+                pb_release(Message_fields, per_client_server_state->request_change);
+                free(per_client_server_state->request_change);
+                per_client_server_state->request_change = NULL;
+            }
+        }
 
         if (PB_IF(request->client_type, Message_ClientType_GUI)) {
             if (prepare_gui_response(response, context) != 0) {

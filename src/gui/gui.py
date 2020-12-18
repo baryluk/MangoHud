@@ -76,30 +76,14 @@ stop_ev = threading.Event()
 class ClientWidget(Gtk.Grid):
     __gtype_name__ = 'ClientWidget'
 
-    def __init__(self, **kwargs):
+    def __init__(self, *, hud_toggle, **kwargs):
         super().__init__(**kwargs)
-        self.hud_toggle.connect("notify::active", self.hud_toggle_notify_active_cb)
+        self.hud_toggle.connect("notify::active", hud_toggle)
+        # self.log_toggle.connect("notify::active", log_toggle)
 
     @Gtk.Template.Callback('hud_toggle_activate_cb')
     def on_hud_toggle_toggled(self, widget):
         print("HUD toggled")
-        pass
-
-    def hud_toggle_notify_active_cb(self, widget, property):
-        print("hud_toggle_notify_active_cb")
-        print(widget)
-        if property: # <GParamBoolean 'active'>
-          print("true")
-        else:
-          print("false")
-        print(property)
-        print(widget.get_active())
-        print()
-
-        # TODO(baryluk): Wire things together.
-        # self.hud_change_requested = True
-
-        # self.notify(...)
         pass
 
     # @Gtk.Template.Callback('log_toggle_activate_cb')
@@ -107,21 +91,47 @@ class ClientWidget(Gtk.Grid):
         print("Log toggled")
         pass
 
+    # GtkLabel
     fps = Gtk.Template.Child('fps')
     app_name = Gtk.Template.Child('app_name')
     api = Gtk.Template.Child('api')
+
+    # GtkSwitch
     hud_toggle = Gtk.Template.Child('hud_toggle')
-    log_toggle = Gtk.Template.Child('log_toggle')
+    log_toggle = Gtk.Template.Child('log_toggle') 
 
 class Client(object):
-    def __init__(self, pid, nodename, client_widget, last_msg_state):
+    def __init__(self, last_msg_state):
         # Instance of ClientWidget with updated stuff.
-        self.client_widget = client_widget
         self.last_msg_state = last_msg_state
-        self.nodename = nodename
-        self.pid = pid
+        self.nodename = last_msg_state.nodename
+        self.pid = last_msg_state.pid
         self.hud_change_requested = False
         self.hud_change_request = False
+        self.hud_change_requested_at_msg_counter = float('-inf')
+        self.msg_counter = 0
+
+        # Create Gtk client widget instance
+        self.client_widget = ClientWidget(hud_toggle=self.hud_toggle_notify_active_cb)
+
+    def hud_toggle_notify_active_cb(self, toggle_widget : 'GtkSwitch', property):
+        # print("hud_toggle_notify_active_cb")
+        # print(toggle_widget)
+        # if property: # <GParamBoolean 'active'>
+        #   print("true")
+        # else:
+        #   print("false")
+        # print(property)
+        # print(toggle_widget.get_active())
+        # print()
+
+        # TODO(baryluk): Wire things together.
+        self.hud_change_requested = True
+        self.hud_change_request = toggle_widget.get_active()
+        self.hud_change_requested_at_msg_counter = self.msg_counter
+
+        # self.notify(...)
+        pass
 
 # The key is (nodename, pid) => ClientWidget
 known_clients = {}
@@ -140,20 +150,20 @@ def handle_message(msg):
         for client_msg in msg.clients:
             key = (client_msg.nodename, client_msg.pid)
             if key not in known_clients:
-                client_widget = ClientWidget()
+                new_clients = True
+                client = Client(client_msg)
+                known_clients[key] = client
 
                 #if last_row:
                 if True:
                     # This probably is not safe to do from this thread
                     # clients_container.insert_next_to(last_row, Gtk.PositionType.BOTTOM)
-                    clients_container.attach(client_widget, left=0, top=last_row_count+1, width=1, height=1)
-
-                    last_row = client_widget
+                    clients_container.attach(client.client_widget, left=0, top=last_row_count+1, width=1, height=1)
+                    # last_row = client.client_widget
                     last_row_count += 1
-                    known_clients[key] = Client(client_msg.pid, client_msg.nodename, client_widget, client_msg)
-                    new_clients = True
             else:
                 known_clients[key].last_msg_state = client_msg
+            known_clients[key].msg_counter += 1
         if new_clients:
             clients_container.show_all()
 
@@ -188,7 +198,10 @@ def handle_message(msg):
 
             # TODO(baryluk): If user toggled it On, but next few msg, still show client.show_hud
             # False, don't immedietly toggle it back.
-            client_widget.hud_toggle.set_active(client_msg.show_hud)
+            # This works, but is hacky.
+            # Maybe get some sequence numbers from client or something.
+            if client.msg_counter > client.hud_change_requested_at_msg_counter + 20:
+                client_widget.hud_toggle.set_active(client_msg.show_hud)
             client_widget.hud_toggle.set_sensitive(True)
 
             # TODO(baryluk): Garbage collect old clients.
@@ -200,20 +213,30 @@ def thread_loop(sock):
         msg = pb.Message(protocol_version=1, client_type=pb.Message.ClientType.GUI)
 
         # Not thread safe, as known_clients is updated by main thread.
+        # And the client.hud_change_request might be update by main thread too.
         for client_key, client in known_clients.items():
-            if client.hud_change_requested or True:
-              last_msg = client.last_msg_state
-              client_msg = pb.Message()
-              client_msg.nodename = last_msg.nodename
-              client_msg.uid = last_msg.uid
-              client_msg.pid = last_msg.pid
-              client_msg.show_hud = client.hud_change_request
-              msg.clients.append(client_msg)
+            if client.hud_change_requested:
+                last_msg = client.last_msg_state
+                client_msg = pb.Message()
+                # Populate fields that the server can identify which client we
+                # are talking about.
+                client_msg.nodename = last_msg.nodename
+                client_msg.uid = last_msg.uid
+                client_msg.pid = last_msg.pid
+                # Set desired state.
+                client_msg.change_show_hud = True  # Workaround lack of optional in proto3.
+                client_msg.show_hud = client.hud_change_request
+                # Reset the request.
+                client.hud_change_requested = False
+                client.hud_change_request = None
+                msg.clients.append(client_msg)
 
+        # print("Request:", msg)
         send(sock, msg)
 
         msg = recv(sock)
-        # print(msg)
+        # print("Response:", msg)
+        # print()
 
         if (msg.protocol_version and msg.protocol_version > SUPPORTED_PROTOCOL_VERSION):
             if not protocol_version_warnings_shown:
@@ -228,7 +251,7 @@ def thread_loop(sock):
         if len(msg.clients) == 0:
           time.sleep(1.00)
         else:
-          time.sleep(0.05)
+          time.sleep(0.25)
 
 def thread_loop_start(sock):
     print("Connected")
