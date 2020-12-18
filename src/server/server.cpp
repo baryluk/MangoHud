@@ -30,9 +30,8 @@
 // Note, the connection can be established for debugging using socat:
 // socat -d -d -d unix-connect:/tmp/9Lq7BNBnBycd6nxy.socket,type=5 stdio
 
-//#define SOCKET_NAME "/tmp/9Lq7BNBnBycd6nxy.socket"
-
-#define MAX_EVENTS 10
+#define LISTEN_BACKLOG 10
+#define MAX_EVENTS 20
 
 #include "common.h"
 
@@ -64,16 +63,17 @@ struct RequestContext {
     std::vector<ServerState*> *all_server_states;
 };
 
-static int prepare_gui_response(Message* response, struct RequestContext *const context) {
-    assert(PB_IF(context->server_state->recent_state.client_type, Message_ClientType_GUI));
-
+// Returns hostname aka nodename from gethostname or uname.
+//
+// Returned string is allocated by 'malloc' or NULL on failure.
+static char* get_myhostname() {
     char hostname[HOST_NAME_MAX + 1];
     hostname[0] = '\0';
     if (gethostname(hostname, sizeof(hostname)) < 0) {
         perror("gethostname");
         hostname[HOST_NAME_MAX] = '\0'; // Just for a good measure.
     } else {
-        PB_MALLOC_SET_STR(response->nodename, hostname);
+        return strdup(hostname);
     }
     if (strlen(hostname) == 0) {
         struct utsname utsname_buf;
@@ -81,9 +81,16 @@ static int prepare_gui_response(Message* response, struct RequestContext *const 
             perror("uname");
             // What next?
         } else {
-            PB_MALLOC_SET_STR(response->nodename, utsname_buf.nodename);
+            return strdup(hostname);
         }
     }
+    return NULL;
+}
+
+static int prepare_gui_response(Message* response, struct RequestContext *const context) {
+    assert(PB_IF(context->server_state->recent_state.client_type, Message_ClientType_GUI));
+
+    response->nodename = get_myhostname();  // Not PB_MALLOC_SET_STR!
 
     std::vector<Message> sub_responses;
 
@@ -355,14 +362,14 @@ retry_tcp_bind:
     //}
 
 
-    if (listen(connection_unix_socket, 20) != 0) {
+    if (listen(connection_unix_socket, LISTEN_BACKLOG) != 0) {
         return errno;  // listen
     }
 
     fprintf(stderr, "Listening on UNIX socket %s\n", socket_name);
 
 
-    if (listen(connection_tcp_socket, 20) != 0) {
+    if (listen(connection_tcp_socket, LISTEN_BACKLOG) != 0) {
         return errno;  // listen
     }
 
