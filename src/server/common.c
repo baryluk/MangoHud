@@ -21,7 +21,7 @@
 
 #include <string.h>  // memset, strncpy
 
-#include <time.h>  // time
+#include <time.h>  // clock_gettime
 
 #define PB_ENABLE_MALLOC
 #include <pb.h>
@@ -510,6 +510,16 @@ try_responding:
     return 0;
 }
 
+// TODO(baryluk): Add Windows support.
+static uint64_t get_time_usec() {
+    struct timespec ts;
+    if (clock_gettime(CLOCK_MONOTONIC, &ts) < 0) {
+        perror("clock_gettime CLOCK_MONOTONIC");
+        exit(1);
+    }
+    return ts.tv_nsec/(uint64_t)(1000uL) + ts.tv_sec*(uint64_t)(1000000uL);
+}
+
 void rpc_client_maybe_communicate(struct RpcClientState *rpc_client_state,
                                   int(*message_generator)(Message*, void*),
                                   void* generator_state,
@@ -520,14 +530,18 @@ void rpc_client_maybe_communicate(struct RpcClientState *rpc_client_state,
       return;
    }
    if (rpc_client_state->connected) {
-       if (rpc_client_state->in_sending == 0 && rpc_client_state->response == NULL && rpc_client_state->last_send_time + rpc_client_state->send_period <= time(NULL) && message_generator != NULL) {
+       const uint64_t now_usec = get_time_usec();
+       // Either generate a new message, or try reading any messages from server (or both).
+       if (rpc_client_state->in_sending == 0 && rpc_client_state->response == NULL && rpc_client_state->last_send_time_usec + rpc_client_state->send_period_usec <= now_usec && message_generator != NULL) {
            Message* message = (Message*)calloc(1, sizeof(Message));
 
            message_generator(message, generator_state);
 
            rpc_client_state->response = message;  // PREPARE NEW STUFF FOR SENDING.
-           rpc_client_state->last_send_time = time(NULL);  // Technically this is not the time of send, but preparation. But close enough.
-           rpc_client_state->send_period = 1;
+
+           // Technically this is not the time of send, but preparation. But close enough.
+           rpc_client_state->last_send_time_usec = now_usec;
+           rpc_client_state->send_period_usec = 200000;  // 200_000usec, 200ms
        }
        int retries = 0;
        int ret = -1;
@@ -549,6 +563,7 @@ void rpc_client_maybe_communicate(struct RpcClientState *rpc_client_state,
           assert(rpc_client_state->connected == 1);
        } else {
           assert(rpc_client_state->connected == 0);
+          rpc_client_state->prev_connect_attempt_usec = get_time_usec();
           fprintf(stderr, "Failed to connect. Will retry later.\n");
           // TODO(baryluk): Rate limit connection attempts.
        }
@@ -596,6 +611,11 @@ void rpc_client_state_cleanup(struct RpcClientState* rpc_client_state) {
         }
         rpc_client_state->fd = 0;
     }
+
+    rpc_client_state->last_send_time_usec = 0;
+    rpc_client_state->send_period_usec = 200000;
+
+    rpc_client_state->prev_connect_attempt_usec = 0;
 }
 
 #undef DEBUG

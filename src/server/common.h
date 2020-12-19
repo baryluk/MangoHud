@@ -182,8 +182,10 @@ struct RpcClientState {
 
     // Used for rate limiting requests, that we wish to be sending on our own.
     // TODO(baryluk): Move this to the message_generator instead.
-    int last_send_time;
-    int send_period;
+    uint64_t last_send_time_usec;
+    uint64_t send_period_usec;
+
+    uint64_t prev_connect_attempt_usec;
 };
 
 int rpc_client_connect(struct RpcClientState *rpc_client_state) MUST_USE_RESULT COLD;
