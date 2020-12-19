@@ -370,7 +370,6 @@ window.connect("destroy", Gtk.main_quit)
 # clear_button = builder.get_object("clear_button")
 # preferences_button = builder.get_object("preferences_button")
 
-
 try:
     window.show_all()
 
