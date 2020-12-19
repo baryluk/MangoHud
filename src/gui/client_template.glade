@@ -32,12 +32,17 @@ THE SOFTWARE.
   <template class="ClientWidget" parent="GtkGrid">
     <property name="visible">True</property>
     <property name="can-focus">False</property>
-    <property name="column-homogeneous">True</property>
+    <property name="valign">start</property>
+    <property name="hexpand">True</property>
     <child>
       <object class="GtkLabel" id="app_name">
+        <property name="width-request">180</property>
         <property name="visible">True</property>
         <property name="can-focus">False</property>
+        <property name="hexpand">True</property>
         <property name="label" translatable="yes">APP</property>
+        <property name="justify">right</property>
+        <property name="ellipsize">end</property>
         <style>
           <class name="bigone"/>
         </style>
@@ -49,8 +54,10 @@ THE SOFTWARE.
     </child>
     <child>
       <object class="GtkLabel" id="fps">
+        <property name="width-request">80</property>
         <property name="visible">True</property>
         <property name="can-focus">False</property>
+        <property name="hexpand">True</property>
         <property name="label" translatable="yes">FPS</property>
         <style>
           <class name="bigone"/>
@@ -65,6 +72,7 @@ THE SOFTWARE.
       <object class="GtkLabel" id="api">
         <property name="visible">True</property>
         <property name="can-focus">False</property>
+        <property name="hexpand">True</property>
         <property name="label" translatable="yes">API</property>
         <style>
           <class name="api"/>
@@ -78,13 +86,20 @@ THE SOFTWARE.
     <child>
       <!-- n-columns=2 n-rows=2 -->
       <object class="GtkGrid">
+        <property name="width-request">100</property>
         <property name="visible">True</property>
         <property name="can-focus">False</property>
+        <property name="halign">end</property>
+        <property name="hexpand">True</property>
+        <property name="row-homogeneous">True</property>
+        <property name="column-homogeneous">True</property>
         <child>
           <object class="GtkLabel">
             <property name="visible">True</property>
             <property name="can-focus">False</property>
+            <property name="halign">end</property>
             <property name="label" translatable="yes">HUD</property>
+            <property name="justify">right</property>
           </object>
           <packing>
             <property name="left-attach">0</property>
@@ -95,7 +110,9 @@ THE SOFTWARE.
           <object class="GtkLabel">
             <property name="visible">True</property>
             <property name="can-focus">False</property>
+            <property name="halign">end</property>
             <property name="label" translatable="yes">Log</property>
+            <property name="justify">right</property>
           </object>
           <packing>
             <property name="left-attach">0</property>
@@ -136,6 +153,7 @@ THE SOFTWARE.
       <object class="GtkLabel" id="more">
         <property name="visible">True</property>
         <property name="can-focus">False</property>
+        <property name="hexpand">True</property>
         <property name="label" translatable="yes">More</property>
       </object>
       <packing>

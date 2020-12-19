@@ -76,10 +76,10 @@ stop_ev = threading.Event()
 class ClientWidget(Gtk.Grid):
     __gtype_name__ = 'ClientWidget'
 
-    def __init__(self, *, hud_toggle, **kwargs):
+    def __init__(self, *, hud_toggle_cb, **kwargs):
         super().__init__(**kwargs)
-        self.hud_toggle.connect("notify::active", hud_toggle)
-        # self.log_toggle.connect("notify::active", log_toggle)
+        self.hud_toggle.connect("notify::active", hud_toggle_cb)
+        # self.log_toggle.connect("notify::active", log_toggle_cb)
 
     @Gtk.Template.Callback('hud_toggle_activate_cb')
     def on_hud_toggle_toggled(self, widget):
@@ -98,10 +98,10 @@ class ClientWidget(Gtk.Grid):
 
     # GtkSwitch
     hud_toggle = Gtk.Template.Child('hud_toggle')
-    log_toggle = Gtk.Template.Child('log_toggle') 
+    log_toggle = Gtk.Template.Child('log_toggle')
 
 class Client(object):
-    def __init__(self, last_msg_state):
+    def __init__(self, *, last_msg_state, row_index):
         # Instance of ClientWidget with updated stuff.
         self.last_msg_state = last_msg_state
         self.nodename = last_msg_state.nodename
@@ -112,19 +112,12 @@ class Client(object):
         self.msg_counter = 0
 
         # Create Gtk client widget instance
-        self.client_widget = ClientWidget(hud_toggle=self.hud_toggle_notify_active_cb)
+        self.client_widget = ClientWidget(hud_toggle_cb=self.hud_toggle_notify_active_cb)
+
+        # row in the parent GtkGrid that the client_widget is in
+        self.row_index = row_index
 
     def hud_toggle_notify_active_cb(self, toggle_widget : 'GtkSwitch', property):
-        # print("hud_toggle_notify_active_cb")
-        # print(toggle_widget)
-        # if property: # <GParamBoolean 'active'>
-        #   print("true")
-        # else:
-        #   print("false")
-        # print(property)
-        # print(toggle_widget.get_active())
-        # print()
-
         # TODO(baryluk): Wire things together.
         self.hud_change_requested = True
         self.hud_change_request = toggle_widget.get_active()
@@ -138,12 +131,11 @@ known_clients = {}
 
 clients_container = builder.get_object('clients_container')
 
-last_row = None
-last_row_count = 0
+last_row_count = 1  # Actually past the last one.
 
 def handle_message(msg):
     global known_clients
-    global last_row, last_row_count
+    global last_row_count
 
     if msg.clients:
         new_clients = False
@@ -151,16 +143,14 @@ def handle_message(msg):
             key = (client_msg.nodename, client_msg.pid)
             if key not in known_clients:
                 new_clients = True
-                client = Client(client_msg)
+                client = Client(last_msg_state=client_msg, row_index=last_row_count)
                 known_clients[key] = client
 
-                #if last_row:
-                if True:
-                    # This probably is not safe to do from this thread
-                    # clients_container.insert_next_to(last_row, Gtk.PositionType.BOTTOM)
-                    clients_container.attach(client.client_widget, left=0, top=last_row_count+1, width=1, height=1)
-                    # last_row = client.client_widget
-                    last_row_count += 1
+                # This probably is not safe to do from this thread
+                # clients_container.insert_next_to(last_row, Gtk.PositionType.BOTTOM)
+                clients_container.attach(client.client_widget, left=0, top=client.row_index, width=1, height=1)
+                # last_row = client.client_widget
+                last_row_count += 1
             else:
                 known_clients[key].last_msg_state = client_msg
             known_clients[key].msg_counter += 1
@@ -173,7 +163,7 @@ def handle_message(msg):
         for key, client in known_clients.items():
             client_msg = client.last_msg_state
             client_widget = client.client_widget
-            client_widget.fps.set_text(f"{client_msg.fps:.3f}")
+            client_widget.fps.set_text(f"{client_msg.fps:.0f}")
             client_widget.app_name.set_text(f"{client_msg.program_name}")
             api = ""
             if client_msg.render_info and client_msg.render_info.opengl:
@@ -342,15 +332,44 @@ def connect_clicked(button):
     # thread.daemon = True  # This means to not wait for the thread on exit. Just kill it.
     thread.start()
 
+def clear_clicked(button):
+    global last_row_count
+    global known_clients
+    global clients_container
+
+    rows_to_remove = []
+    # That is pretty strong way of doing things.
+    for client_key, client in known_clients.items():
+        rows_to_remove.append(client.row_index)
+    # GtkGrid.remove_row removes the row and child in it,
+    # but also moves all the rows below up by one.
+    # So remove from the end.
+    for row_index in sorted(rows_to_remove, reverse=True):
+        clients_container.remove_row(row_index)
+    # Pretty heavy.
+    known_clients.clear()
+    last_row_count = 1
+    # for client_key, client in known_clients.items():
+    pass
+
 handlers = {
     "connect_clicked": connect_clicked,
+    "clear_button_clicked_cb": clear_clicked,
 }
 
 builder.connect_signals(handlers)
 
 window = builder.get_object("window_main")
 
+#header_bar = builder.get_object("headerbar1")
+#window.set_titlebar(header_bar)
+
 window.connect("destroy", Gtk.main_quit)
+
+# record_toggle_button = builder.get_object("record_toggle")
+# clear_button = builder.get_object("clear_button")
+# preferences_button = builder.get_object("preferences_button")
+
 
 try:
     window.show_all()
