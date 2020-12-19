@@ -525,10 +525,11 @@ void rpc_client_maybe_communicate(struct RpcClientState *rpc_client_state,
                                   void* generator_state,
                                   int(*message_handler)(const Message*, void*),
                                   void* handler_state) {
-   if (rpc_client_state == NULL) {
-      DEBUG(fprintf(stderr, "No client state!\n"));
-      return;
-   }
+   // assert(rpc_client_state != NULL);
+   // if (rpc_client_state == NULL) {
+   //   DEBUG(fprintf(stderr, "No client state!\n"));
+   //   return;
+   //}
    if (rpc_client_state->connected) {
        const uint64_t now_usec = get_time_usec();
        // Either generate a new message, or try reading any messages from server (or both).
@@ -557,15 +558,18 @@ void rpc_client_maybe_communicate(struct RpcClientState *rpc_client_state,
           assert(rpc_client_state->connected == 0);
        }
    } else {
-       DEBUG(fprintf(stderr, "Not connected. Trying to connect\n"));
-       if (rpc_client_connect(rpc_client_state) == 0) {
-          DEBUG(fprintf(stderr, "Connected! Yay!\n"));
-          assert(rpc_client_state->connected == 1);
-       } else {
-          assert(rpc_client_state->connected == 0);
-          rpc_client_state->prev_connect_attempt_usec = get_time_usec();
-          fprintf(stderr, "Failed to connect. Will retry later.\n");
-          // TODO(baryluk): Rate limit connection attempts.
+       const uint64_t now_usec = get_time_usec();
+       const uint64_t connection_retry_delay = 5000000; // 5s
+       if (rpc_client_state->prev_connect_attempt_usec + connection_retry_delay <= now_usec) {
+           DEBUG(fprintf(stderr, "Not connected, and retry delay passed. Trying to connect\n"));
+           if (rpc_client_connect(rpc_client_state) == 0) {
+               DEBUG(fprintf(stderr, "Connected! Yay!\n"));
+               assert(rpc_client_state->connected == 1);
+           } else {
+               assert(rpc_client_state->connected == 0);
+               rpc_client_state->prev_connect_attempt_usec = now_usec;
+               DEBUG(fprintf(stderr, "Failed to connect. Will retry later.\n"));
+           }
        }
    }
 }
