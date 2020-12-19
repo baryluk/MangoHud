@@ -278,7 +278,7 @@ static int server_request_handler(const Message* const request, void* my_state) 
 
         if (request->fps) {
             PB_MAYBE_UPDATE(recent_state->fps, request->fps);
-            fprintf(stderr, "pid %9lu   fps: %.3f  name=%s  type=%s engine=%s driver=%s\n", pid, *request->fps, request->program_name, type, engine_name, driver_name);
+            // fprintf(stderr, "pid %9lu   fps: %.3f  name=%s  type=%s engine=%s driver=%s\n", pid, *request->fps, request->program_name, type, engine_name, driver_name);
         }
 
         PB_MAYBE_UPDATE_STR(recent_state->program_name, request->program_name);
@@ -299,7 +299,7 @@ static int server_request_handler(const Message* const request, void* my_state) 
             const uint64_t timestamp_usec = request->frametimes[i].timestamp_usec ? *(request->frametimes[i].timestamp_usec) : 0;
             const uint32_t index = *(request->frametimes[i].index);
             const uint32_t time_usec = *(request->frametimes[i].time_usec);
-            fprintf(stderr, "   frame %9d: %7" PRIu32 " us @ %10" PRIu64 "\n", index, time_usec, timestamp_usec);
+            // fprintf(stderr, "   frame %9d: %7" PRIu32 " us @ %10" PRIu64 "\n", index, time_usec, timestamp_usec);
         }
     }
     //for (auto& frametime : frametimes) {
