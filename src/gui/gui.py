@@ -2,6 +2,7 @@
 
 bs = False
 import platform
+# Cygwin will return 'posix', but that is fine.
 if platform.system() == "Windows":
     bs = True
 
@@ -14,6 +15,121 @@ import protos.mangohud_pb2 as pb
 
 gi.require_version("Gtk", "3.0")
 from gi.repository import Gtk, GLib, Gdk, Gio, GObject
+
+def parse_address(address, default_port):
+    from urllib.parse import urlparse
+    # This feels wrong, but I don't want to reinvent parser.
+    parsed = urlparse(f"//{address}")
+    return parsed.hostname, parsed.port if parsed.port is not None else default_port
+
+def pretty_address(address):
+    """Pretty format the address returned by getaddrinfo"""
+    family, type_, proto_, canonname, sockaddr = address
+    host, port = socket.getnameinfo(sockaddr, socket.NI_NUMERICHOST | socket.NI_NUMERICSERV)
+    if family == socket.AF_INET6:
+        return f"[{host}]:{port}"
+    if family == socket.AF_INET:
+        return f"{host}:{port}"
+    assert False
+
+import argparse
+
+parser = argparse.ArgumentParser(description='Connect to local or remote MangoHUD server.',
+                                 formatter_class=argparse.ArgumentDefaultsHelpFormatter,
+                                 allow_abbrev=False)
+
+# Start of the mess.
+#
+# Server address can come from:
+#
+#  1) Default TCP localhost or local per-uid socket.
+#  2) Environment variables.
+#  3) Explicit command line arguments.
+#  4) In-GUI config.
+#
+# Not all configuration and combinations are permited, and trying them
+# will result in error on purpose.
+#
+# However, some other are permited, with proper priority being taken into
+# account.
+#
+# Together with different default on Windows, than Linux, this causes a big mess
+# in the logic.
+#
+# Additionally for diagnostic we want to display both original input, as well
+# as resolved hostname in numeric, form, which together with IPv4, IPv6 and DNS
+# forms, causes a lot of combinations to handle.
+#
+# As a bonus, we want to resolve the address as soon as we know it, so we can
+# show diagnostic, if there was the explicit command line arguments given.
+
+DEFAULT_PORT = 9869
+DEFAULT_HOSTNAME = "localhost"
+DEFAULT_HOST = f"{DEFAULT_HOSTNAME}:{DEFAULT_PORT}"
+prefer_tcp = False  # Ignored on Windows.
+if "MANGOHUD_SERVER" in os.environ:
+    DEFAULT_HOSTNAME, MAYBE_DEFAULT_PORT = parse_address(os.environ["MANGOHUD_SERVER"], None)
+    # This is still not 100% correct. I.e. No square brackets for IPv6.
+    DEFAULT_HOST = f"{DEFAULT_HOSTNAME}:{MAYBE_DEFAULT_PORT if MAYBE_DEFAULT_PORT else DEFAULT_PORT}"
+    prefer_tcp = True
+parser.add_argument('--server', metavar='host', type=str,
+                    help=f"host:port to connect to using TCP, i.e. desktop1.example.com:9869, [::1]:9869, 10.0.1.3:9869. (default: {DEFAULT_HOST})",
+                    default=argparse.SUPPRESS)
+
+if not bs:
+    if getattr(os, "getuid", None):
+        DEFAULT_SOCKET_NAME = f"/tmp/mangohud_server-{os.getuid()}.sock"
+    else:
+        DEFAULT_SOCKET_NAME = f"/tmp/mangohud_server.sock"
+
+    # The length verification to system limits, will be checked by Python
+    # wrapper in `sock.connect`.
+    if "MANGOHUD_SOCKET" in os.environ:
+        DEFAULT_SOCKET_NAME = os.environ["MANGOHUD_SOCKET"]
+    parser.add_argument('--unix_socket', metavar='path', type=str,
+                        default=argparse.SUPPRESS,
+                        help=f"UNIX socket file path to connect to, i.e. /tmp/mangohud.sock. (default: {DEFAULT_SOCKET_NAME})")
+
+# TODO: Show maybe also a dialog window with error, if something is wrong?
+# Is there a way if we are running from terminal (detect pts?), or without?
+
+args = parser.parse_args()
+assert not (getattr(args, "server", None) and getattr(args, "unix_socket", None)), "Only one connection method can be specified at the time."
+
+UNPARSED_ADDRESS = DEFAULT_HOST
+
+if not bs:
+    # On Linux, if MANGOHUD_SERVER or --server is used
+    if getattr(args, "server", None) or prefer_tcp:
+        prefer_unix_socket = False
+        # Use --server first
+        if getattr(args, "server", None):
+            UNPARSED_ADDRESS = args.server
+            ADDRESS = parse_address(args.server, DEFAULT_PORT)
+        # Then MANGOHUD_SERVER
+        else:
+            ADDRESS = parse_address(DEFAULT_HOST, DEFAULT_PORT)
+    # Otherwise use MAGOHUD_SOCKET or --unix_socket
+    else:
+        prefer_unix_socket = True
+        if not getattr(args, "unix_socket", None):
+            args.unix_socket = DEFAULT_SOCKET_NAME
+else:
+    # On Windows, just use MANGOHUD_SERVER or --server.
+    prefer_unix_socket = False
+    prefer_tcp = True
+    UNPARSED_ADDRESS = args.server
+    ADDRESS = parse_address(args.server, DEFAULT_PORT)
+
+# TODO(baryluk): This is still not exactly how it should work.
+# I.e. if there is MANGOHUD_SERVER and MANGOHUD_SOCKET both set,
+# we should warn or something, and prefer the MANGOHUD_SOCKET,
+# (unless of course --server is set explicitly).
+
+# TODO(baryluk): Automatically determine type of server (UNIX vs TCP),
+# from MANGOHUD_SERVER variable.
+
+# End of the mess.
 
 screen = Gdk.Screen.get_default()
 gtk_provider = Gtk.CssProvider()
@@ -39,23 +155,6 @@ import time
 connect_button = builder.get_object("connect_button")
 
 SUPPORTED_PROTOCOL_VERSION = 1
-
-# TODO(baryluk): Make this a program argument.
-ADDRESS = ("localhost", 9869)
-
-# The length verification to system limits, will be checked by Python wrapper
-# in `sock.connect`.
-if getattr(os, "getuid", None):
-    SOCKET_NAME = f"/tmp/mangohud_server-{os.getuid()}.socket"
-else:
-    # For Windows.
-    SOCKET_NAME = f"/tmp/mangohud_server.socket"
-
-if "MANGOHUD_SERVER" in os.environ:
-    SOCKET_NAME = os.environ["MANGOHUD_SERVER"]
-
-# TODO(baryluk): Automatically determine type of server (UNIX vs TCP),
-# from MANGOHUD_SERVER variable.
 
 import socket
 
@@ -173,12 +272,13 @@ def handle_message(msg):
     for key, client in known_clients.items():
         client_msg = client.last_msg_state
 
+        client_widget = client.client_widget
+
         # print(client_msg.timestamp.timestamp_usec - now)
         if client.last_msg_time + 3.0 <= now:  # No updates in 3 seconds.
             client_widget.fps.set_text("???")
             continue
 
-        client_widget = client.client_widget
         client_widget.fps.set_text(f"{client_msg.fps:.0f}")
         client_widget.app_name.set_text(f"{client_msg.program_name}")
         api = ""
@@ -267,6 +367,7 @@ def thread_loop_start(sock):
 
 def connection_thread():
     global thread, stop_ev
+    global args, prefer_unix_socket
     status = "Connecting"
     reconnect = True
     reconnect_delay = 1.0
@@ -275,14 +376,22 @@ def connection_thread():
         extra_type_flags |= socket.SOCK_CLOEXEC
     while reconnect and not stop_ev.is_set():
         try:
-            if True:
+            if prefer_unix_socket:
+                socket_name = args.unix_socket
+                print(f"Connecting to {socket_name}")
+                with socket.socket(family=socket.AF_UNIX, type=socket.SOCK_STREAM | extra_type_flags) as sock:
+                    sock.connect(socket_name)
+                    reconnect_delay = 1.0  # See comment above for TCP.
+                    thread_loop_start(sock)
+                sock.close()
+            else:
                 addresses = socket.getaddrinfo(ADDRESS[0], ADDRESS[1], proto=socket.IPPROTO_TCP)
                 assert addresses
                 address = addresses[0]  # (family, type, proto, canonname, sockaddr)
                 family, type_, proto, canonname, sockaddr = address
                 if not bs:
                     assert type_ == socket.SOCK_STREAM
-                print(f"Connecting to {address}")
+                print(f"Connecting to {UNPARSED_ADDRESS} ( {pretty_address(address)} ) ...")
                 with socket.socket(family=family, type=socket.SOCK_STREAM | extra_type_flags, proto=proto) as sock:
                     sock.connect(sockaddr)
                     # TODO(baryluk): This is too simplistic. It is still
@@ -294,16 +403,11 @@ def connection_thread():
                     reconnect_delay = 1.0
                     thread_loop_start(sock)
                 sock.close()
-            else:
-                print(f"Connecting to {SOCKET_NAME}")
-                with socket.socket(family=socket.AF_UNIX, type=socket.SOCK_STREAM | extra_type_flags) as sock:
-                    sock.connect(SOCKET_NAME)
-                    reconnect_delay = 1.0  # See comment above for TCP.
-                    thread_loop_start(sock)
-                sock.close()
             status = ""
         except BrokenPipeError as e:
             status = "Broken pipe to server"
+        except FileNotFoundError as e:
+            status = "File not found"
         except ConnectionRefusedError as e:
             status = "Connection refused to server (is it down?)"
         except NameError as e:
