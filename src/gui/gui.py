@@ -1,5 +1,10 @@
 #!/usr/bin/env python3
 
+bs = False
+import platform
+if platform.system() == "Windows":
+    bs = True
+
 import sys
 import os
 
@@ -35,11 +40,12 @@ connect_button = builder.get_object("connect_button")
 
 SUPPORTED_PROTOCOL_VERSION = 1
 
+# TODO(baryluk): Make this a program argument.
 ADDRESS = ("localhost", 9869)
 
 # The length verification to system limits, will be checked by Python wrapper
 # in `sock.connect`.
-if os.getuid:
+if getattr(os, "getuid", None):
     SOCKET_NAME = f"/tmp/mangohud_server-{os.getuid()}.socket"
 else:
     # For Windows.
@@ -137,6 +143,9 @@ def handle_message(msg):
     global known_clients
     global last_row_count
 
+    now = time.time()
+    gc_delay = 20.0
+
     if msg.clients:
         new_clients = False
         for client_msg in msg.clients:
@@ -154,47 +163,54 @@ def handle_message(msg):
             else:
                 known_clients[key].last_msg_state = client_msg
             known_clients[key].msg_counter += 1
+            known_clients[key].last_msg_time = now
         if new_clients:
             clients_container.show_all()
 
         # TODO(baryluk): Remove stale clients or once we know for
         # sure are down.
 
-        for key, client in known_clients.items():
-            client_msg = client.last_msg_state
-            client_widget = client.client_widget
-            client_widget.fps.set_text(f"{client_msg.fps:.0f}")
-            client_widget.app_name.set_text(f"{client_msg.program_name}")
-            api = ""
-            if client_msg.render_info and client_msg.render_info.opengl:
-                opengl = "OpenGL ES" if client_msg.render_info.opengl_is_gles else "OpenGL"
-                api = f"{opengl} {client_msg.render_info.opengl_version_major}.{client_msg.render_info.opengl_version_minor}"
-            elif client_msg.render_info and client_msg.render_info.vulkan:
-                api = f"Vulkan {client_msg.render_info.vulkan_version_major}.{client_msg.render_info.vulkan_version_minor}.{client_msg.render_info.vulkan_version_patch}"
-            else:
-                api = f"pid {client_msg.pid}"
-            if client_msg.render_info.gpu_name:
-                api += f"\n{client_msg.render_info.gpu_name}"
-            if client_msg.render_info.driver_name:
-                api += f"\n{client_msg.render_info.driver_name}"
-            if client_msg.render_info.engine_name:
-                api += f"\n{client_msg.render_info.engine_name}"
-            if client_msg.wine_version:
-                api += f"\nWine {client_msg.wine_version}"
-            client_widget.api.set_text(api)
-            # Add time details in tooltip (like last update).
-            tooltip = f"pid {client_msg.pid} @ {client_msg.nodename}; uid {client_msg.uid}; username {client_msg.username}"
-            client_widget.api.set_tooltip_text(tooltip)
+    for key, client in known_clients.items():
+        client_msg = client.last_msg_state
 
-            # TODO(baryluk): If user toggled it On, but next few msg, still show client.show_hud
-            # False, don't immedietly toggle it back.
-            # This works, but is hacky.
-            # Maybe get some sequence numbers from client or something.
-            if client.msg_counter > client.hud_change_requested_at_msg_counter + 20:
-                client_widget.hud_toggle.set_active(client_msg.show_hud)
-            client_widget.hud_toggle.set_sensitive(True)
+        # print(client_msg.timestamp.timestamp_usec - now)
+        if client.last_msg_time + 3.0 <= now:  # No updates in 3 seconds.
+            client_widget.fps.set_text("???")
+            continue
 
-            # TODO(baryluk): Garbage collect old clients.
+        client_widget = client.client_widget
+        client_widget.fps.set_text(f"{client_msg.fps:.0f}")
+        client_widget.app_name.set_text(f"{client_msg.program_name}")
+        api = ""
+        if client_msg.render_info and client_msg.render_info.opengl:
+            opengl = "OpenGL ES" if client_msg.render_info.opengl_is_gles else "OpenGL"
+            api = f"{opengl} {client_msg.render_info.opengl_version_major}.{client_msg.render_info.opengl_version_minor}"
+        elif client_msg.render_info and client_msg.render_info.vulkan:
+            api = f"Vulkan {client_msg.render_info.vulkan_version_major}.{client_msg.render_info.vulkan_version_minor}.{client_msg.render_info.vulkan_version_patch}"
+        else:
+            api = f"pid {client_msg.pid}"
+        if client_msg.render_info.gpu_name:
+            api += f"\n{client_msg.render_info.gpu_name}"
+        if client_msg.render_info.driver_name:
+            api += f"\n{client_msg.render_info.driver_name}"
+        if client_msg.render_info.engine_name:
+            api += f"\n{client_msg.render_info.engine_name}"
+        if client_msg.wine_version:
+            api += f"\nWine {client_msg.wine_version}"
+        client_widget.api.set_text(api)
+        # Add time details in tooltip (like last update).
+        tooltip = f"pid {client_msg.pid} @ {client_msg.nodename}; uid {client_msg.uid}; username {client_msg.username}"
+        client_widget.api.set_tooltip_text(tooltip)
+
+        # TODO(baryluk): If user toggled it On, but next few msg, still show client.show_hud
+        # False, don't immedietly toggle it back.
+        # This works, but is hacky.
+        # Maybe get some sequence numbers from client or something.
+        if client.msg_counter > client.hud_change_requested_at_msg_counter + 20:
+            client_widget.hud_toggle.set_active(client_msg.show_hud)
+        client_widget.hud_toggle.set_sensitive(True)
+
+        # TODO(baryluk): Garbage collect old clients.
 
 
 def thread_loop(sock):
@@ -254,6 +270,9 @@ def connection_thread():
     status = "Connecting"
     reconnect = True
     reconnect_delay = 1.0
+    extra_type_flags = 0
+    if not bs:
+        extra_type_flags |= socket.SOCK_CLOEXEC
     while reconnect and not stop_ev.is_set():
         try:
             if True:
@@ -261,9 +280,10 @@ def connection_thread():
                 assert addresses
                 address = addresses[0]  # (family, type, proto, canonname, sockaddr)
                 family, type_, proto, canonname, sockaddr = address
-                assert type_ == socket.SOCK_STREAM
+                if not bs:
+                    assert type_ == socket.SOCK_STREAM
                 print(f"Connecting to {address}")
-                with socket.socket(family=family, type=socket.SOCK_STREAM | socket.SOCK_CLOEXEC, proto=proto) as sock:
+                with socket.socket(family=family, type=socket.SOCK_STREAM | extra_type_flags, proto=proto) as sock:
                     sock.connect(sockaddr)
                     # TODO(baryluk): This is too simplistic. It is still
                     # possible to connect, yet be disconnected after parsing the
@@ -276,7 +296,7 @@ def connection_thread():
                 sock.close()
             else:
                 print(f"Connecting to {SOCKET_NAME}")
-                with socket.socket(family=socket.AF_UNIX, type=socket.SOCK_STREAM | socket.SOCK_CLOEXEC) as sock:
+                with socket.socket(family=socket.AF_UNIX, type=socket.SOCK_STREAM | extra_type_flags) as sock:
                     sock.connect(SOCKET_NAME)
                     reconnect_delay = 1.0  # See comment above for TCP.
                     thread_loop_start(sock)

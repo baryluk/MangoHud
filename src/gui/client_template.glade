@@ -89,8 +89,7 @@ THE SOFTWARE.
         <property name="width-request">100</property>
         <property name="visible">True</property>
         <property name="can-focus">False</property>
-        <property name="halign">end</property>
-        <property name="hexpand">True</property>
+        <property name="valign">center</property>
         <property name="row-homogeneous">True</property>
         <property name="column-homogeneous">True</property>
         <child>
