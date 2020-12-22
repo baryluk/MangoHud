@@ -623,7 +623,7 @@ void init_system_info(){
          setenv("MANGOHUD_RECURSION", "1", 1);
 
          const char* disable_mangohud_copy = disable_mangohud ? strdup(disable_mangohud) : NULL;
-         const char* mangohud = getenv("MANGOHUD);
+         const char* mangohud = getenv("MANGOHUD");
          const char* mangohud_copy = mangohud ? strdup(mangohud) : NULL;
          // Tell Vulkan loader to not load VK_LAYER_MANGOHUD_overlay for the glxinfo.
          // (This can happen for example when using Mesa zink, or there is some other
