@@ -597,8 +597,10 @@ void init_gpu_stats(uint32_t& vendorID, overlay_params& params)
 void init_system_info(){
    #ifdef __gnu_linux__
       const char* ld_preload = getenv("LD_PRELOAD");
-      if (ld_preload)
+      const char* ld_preload_copy = ld_preload ? strdup(ld_preload) : NULL;
+      if (ld_preload) {
          unsetenv("LD_PRELOAD");
+      }
 
       ram =  exec("cat /proc/meminfo | grep 'MemTotal' | awk '{print $2}'");
       trim(ram);
@@ -613,10 +615,37 @@ void init_system_info(){
       trim(gpu);
 
       const char* mangohud_recursion = getenv("MANGOHUD_RECURSION");
-      if (!mangohud_recursion) {
+      // Usually we shouldn't even be in this code, if MANGOHUD_DISABLE=1,
+      // however, it can still actually happen, in more complex recurssion
+      // situations.
+      const char* mangohud_disable = getenv("MANGOHUD_DISABLE");
+      if (!mangohud_recursion && !mangohud_disable) {
          setenv("MANGOHUD_RECURSION", "1", 1);
+
+         const char* mangohud = getenv("MANGOHUD);
+         const char* mangohud_disable_copy = mangohud_disable ? strdup(mangohud_disable) : NULL;
+         const char* mangohud_copy = mangohud ? strdup(mangohud) : NULL;
+         // Tell Vulkan loader to not load VK_LAYER_MANGOHUD_overlay for the glxinfo.
+         // (This can happen for example when using Mesa zink, or there is some other
+         //  library loading Vulkan).
+         setenv("MANGOHUD_DISABLE", "1", 1);
+         unsetenv("MANGOHUD");
+
          driver = exec("glxinfo -B | grep 'OpenGL version' | sed 's/^.*: //' | cut -d' ' --output-delimiter=$'\n' -f1- | grep -v '(' | grep -v ')' | tr '\n' ' ' | cut -c 1-");
          trim(driver);
+
+         // Restore previous state.
+         if (disable_mangohud_copy) {
+            setenv("DISABLE_MANGOHUD", disable_mangohud_copy, 1);
+            free(disable_mangohud_copy);
+         } else {
+            unsetenv("DISABLE_MANGOHUD");
+         }
+         if (mangohud_copy) {
+            setenv("MANGOHUD", mangohud_copy, 1);
+            free(mangohud_copy);
+         }
+
          unsetenv("MANGOHUD_RECURSION");
       } else {
          driver = "MangoHud glxinfo recurssion detected";
@@ -654,12 +683,15 @@ void init_system_info(){
             stringstream findVersion;
             findVersion << "\"" << dir << "/wine\" --version";
             const char *wine_env = getenv("WINELOADERNOEXEC");
+            const char *wine_env_copy = wine_env ? strdup(wine_env) : NULL;
             if (wine_env)
                unsetenv("WINELOADERNOEXEC");
             wineVersion = exec(findVersion.str());
             std::cout << "WINE VERSION = " << wineVersion << "\n";
-            if (wine_env)
-               setenv("WINELOADERNOEXEC", wine_env, 1);
+            if (wine_env_copy) {
+               setenv("WINELOADERNOEXEC", wine_env_copy, 1);
+               free(wine_env_copy);
+            }
          }
       }
       else {
@@ -681,8 +713,9 @@ void init_system_info(){
       }
       //driver = itox(device_data->properties.driverVersion);
 
-      if (ld_preload)
-         setenv("LD_PRELOAD", ld_preload, 1);
+      if (ld_preload_copy)
+         setenv("LD_PRELOAD", ld_preload_copy, 1);
+         free(ld_preload_copy);
 #ifndef NDEBUG
       std::cout << "Ram:" << ram << "\n"
                 << "Cpu:" << cpu << "\n"
