@@ -615,20 +615,20 @@ void init_system_info(){
       trim(gpu);
 
       const char* mangohud_recursion = getenv("MANGOHUD_RECURSION");
-      // Usually we shouldn't even be in this code, if MANGOHUD_DISABLE=1,
+      // Usually we shouldn't even be in this code, if DISABLE_MANGOHUD=1,
       // however, it can still actually happen, in more complex recurssion
       // situations.
-      const char* mangohud_disable = getenv("MANGOHUD_DISABLE");
-      if (!mangohud_recursion && !mangohud_disable) {
+      const char* disable_mangohud = getenv("DISABLE_MANGOHUD");
+      if (!mangohud_recursion && !disable_mangohud) {
          setenv("MANGOHUD_RECURSION", "1", 1);
 
+         const char* disable_mangohud_copy = disable_mangohud ? strdup(disable_mangohud) : NULL;
          const char* mangohud = getenv("MANGOHUD);
-         const char* mangohud_disable_copy = mangohud_disable ? strdup(mangohud_disable) : NULL;
          const char* mangohud_copy = mangohud ? strdup(mangohud) : NULL;
          // Tell Vulkan loader to not load VK_LAYER_MANGOHUD_overlay for the glxinfo.
          // (This can happen for example when using Mesa zink, or there is some other
          //  library loading Vulkan).
-         setenv("MANGOHUD_DISABLE", "1", 1);
+         setenv("DISABLE_MANGOHUD", "1", 1);
          unsetenv("MANGOHUD");
 
          driver = exec("glxinfo -B | grep 'OpenGL version' | sed 's/^.*: //' | cut -d' ' --output-delimiter=$'\n' -f1- | grep -v '(' | grep -v ')' | tr '\n' ' ' | cut -c 1-");
