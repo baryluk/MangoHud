@@ -596,8 +596,8 @@ void init_gpu_stats(uint32_t& vendorID, overlay_params& params)
 
 void init_system_info(){
    #ifdef __gnu_linux__
-      const char* ld_preload = getenv("LD_PRELOAD");
-      const char* ld_preload_copy = ld_preload ? strdup(ld_preload) : NULL;
+      const char * const ld_preload = getenv("LD_PRELOAD");
+      char* const ld_preload_copy = ld_preload ? strdup(ld_preload) : NULL;
       if (ld_preload) {
          unsetenv("LD_PRELOAD");
       }
@@ -614,17 +614,17 @@ void init_system_info(){
       gpu = exec("lspci | grep VGA | head -n1 | awk -vRS=']' -vFS='[' '{print $2}' | sed '/^$/d' | tail -n1");
       trim(gpu);
 
-      const char* mangohud_recursion = getenv("MANGOHUD_RECURSION");
+      const char * const mangohud_recursion = getenv("MANGOHUD_RECURSION");
       // Usually we shouldn't even be in this code, if DISABLE_MANGOHUD=1,
       // however, it can still actually happen, in more complex recurssion
       // situations.
-      const char* disable_mangohud = getenv("DISABLE_MANGOHUD");
+      const char * const disable_mangohud = getenv("DISABLE_MANGOHUD");
       if (!mangohud_recursion && !disable_mangohud) {
          setenv("MANGOHUD_RECURSION", "1", 1);
 
-         const char* disable_mangohud_copy = disable_mangohud ? strdup(disable_mangohud) : NULL;
-         const char* mangohud = getenv("MANGOHUD");
-         const char* mangohud_copy = mangohud ? strdup(mangohud) : NULL;
+         char * const disable_mangohud_copy = disable_mangohud ? strdup(disable_mangohud) : NULL;
+         const char * const mangohud = getenv("MANGOHUD");
+         char * const mangohud_copy = mangohud ? strdup(mangohud) : NULL;
          // Tell Vulkan loader to not load VK_LAYER_MANGOHUD_overlay for the glxinfo.
          // (This can happen for example when using Mesa zink, or there is some other
          //  library loading Vulkan).
@@ -682,8 +682,8 @@ void init_system_info(){
             char *dir = dirname((char*)wineProcess.c_str());
             stringstream findVersion;
             findVersion << "\"" << dir << "/wine\" --version";
-            const char *wine_env = getenv("WINELOADERNOEXEC");
-            const char *wine_env_copy = wine_env ? strdup(wine_env) : NULL;
+            const char * const wine_env = getenv("WINELOADERNOEXEC");
+            char * const wine_env_copy = wine_env ? strdup(wine_env) : NULL;
             if (wine_env)
                unsetenv("WINELOADERNOEXEC");
             wineVersion = exec(findVersion.str());
@@ -713,9 +713,11 @@ void init_system_info(){
       }
       //driver = itox(device_data->properties.driverVersion);
 
-      if (ld_preload_copy)
+      if (ld_preload_copy) {
          setenv("LD_PRELOAD", ld_preload_copy, 1);
          free(ld_preload_copy);
+      }
+
 #ifndef NDEBUG
       std::cout << "Ram:" << ram << "\n"
                 << "Cpu:" << cpu << "\n"
@@ -724,8 +726,9 @@ void init_system_info(){
                 << "Gpu:" << gpu << "\n"
                 << "Driver:" << driver << std::endl;
 #endif
-      parse_pciids();
-#endif
+
+       parse_pciids();
+    #endif  // __gnu_linux__
 }
 
 static void snapshot_swapchain_frame(struct swapchain_data *data)
