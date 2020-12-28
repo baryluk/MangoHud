@@ -337,45 +337,60 @@ static int protocol_receive(struct RpcClientState* rpc_client_state,
     return ERROR_DONE;
 }
 
-static int protocol_send(struct RpcClientState* rpc_client_state) {
-    DEBUG(fprintf(stderr, "protocol_send\n"));
-    // Serialize response.
-    if (rpc_client_state->output_send_remaining == 0) {
-        assert(rpc_client_state->response != NULL);
-        const Message* const message = rpc_client_state->response;
-        size_t size = -1;
-        if (!pb_get_encoded_size(&size, Message_fields, message)) {
-            goto error_0;
-        }
-        assert(size >= 0);
-        DEBUG(fprintf(stderr, "To be encoded size: %zu\n", size));
-        // TODO(baryluk): Add some extra bytes for uint32_t alignment,
-        // which some CPU architectures (arm, alpha, etc) might require!
-        const size_t output_data_buffer_new_capacity = sizeof(uint32_t) + size * sizeof(uint8_t);
-        rpc_client_state->output_data_buffer = (uint8_t*)realloc(rpc_client_state->output_data_buffer, output_data_buffer_new_capacity);
-        {
-            const uint32_t size_network_order = htonl((uint32_t)size);  // Convert to network byte order.
-            // TODO(baryluk): Improve this by using proper alignment of output buffer.
-            *((uint32_t*)(rpc_client_state->output_data_buffer)) = size_network_order;  // Write framing info at the start.
-            // Put the message after framing info.
-            pb_ostream_t stream_output = pb_ostream_from_buffer(rpc_client_state->output_data_buffer + sizeof(uint32_t), size);
-            if (!pb_encode_ex(&stream_output, Message_fields, message, /*flags=*/0)) {
-                DEBUG(fprintf(stderr, "encode failed: %s\n", stream_output.errmsg));
-                return ERROR_SERIALIZE;
-            }
-            assert(size <= SSIZE_MAX - sizeof(uint32_t));
-            rpc_client_state->output_serialized_size = size;  // This is excluding the frame header.
-            rpc_client_state->output_send_remaining = size + sizeof(uint32_t);
-            rpc_client_state->output_sent_already = 0;
-        }
+static int protocol_send_serialize_maybe(struct RpcClientState* rpc_client_state) {
+    // Serialize response if we can, otherwise do nothing.
+    if (rpc_client_state->output_send_remaining != 0) {
+       return ERROR_DONE;
+    }
 
+    assert(rpc_client_state->response != NULL);
+    const Message* const message = rpc_client_state->response;
+    size_t size = -1;
+    if (!pb_get_encoded_size(&size, Message_fields, message)) {
+        goto error_0;
+    }
+    assert(size >= 0);
+    DEBUG(fprintf(stderr, "To be encoded size: %zu\n", size));
+    // TODO(baryluk): Add some extra bytes for uint32_t alignment,
+    // which some CPU architectures (arm, alpha, etc) might require!
+    const size_t output_data_buffer_new_capacity = sizeof(uint32_t) + size * sizeof(uint8_t);
+    rpc_client_state->output_data_buffer = (uint8_t*)realloc(rpc_client_state->output_data_buffer, output_data_buffer_new_capacity);
+    {
+        const uint32_t size_network_order = htonl((uint32_t)size);  // Convert to network byte order.
+        // TODO(baryluk): Improve this by using proper alignment of output buffer.
+        *((uint32_t*)(rpc_client_state->output_data_buffer)) = size_network_order;  // Write framing info at the start.
+        // Put the message after framing info.
+        pb_ostream_t stream_output = pb_ostream_from_buffer(rpc_client_state->output_data_buffer + sizeof(uint32_t), size);
+        if (!pb_encode_ex(&stream_output, Message_fields, message, /*flags=*/0)) {
+            DEBUG(fprintf(stderr, "encode failed: %s\n", stream_output.errmsg));
+            return ERROR_SERIALIZE;
+        }
+        assert(size <= SSIZE_MAX - sizeof(uint32_t));
+        rpc_client_state->output_serialized_size = size;  // This is excluding the frame header.
+        rpc_client_state->output_send_remaining = size + sizeof(uint32_t);
+        rpc_client_state->output_sent_already = 0;
+    }
+
+    pb_release(Message_fields, rpc_client_state->response);
+    free(rpc_client_state->response);
+    rpc_client_state->response = NULL;
+
+    return ERROR_DONE;
+
+error_0:
+    // If there was an serialization error, well. Don't attempt to serialize it
+    // again, just ignore and drop.
+    if (rpc_client_state->response) {
         pb_release(Message_fields, rpc_client_state->response);
         free(rpc_client_state->response);
         rpc_client_state->response = NULL;
     }
+    return ERROR_SERIALIZE;
+}
 
-    // Start sending serialized response.
-    {
+static int protocol_send_more_data_maybe(struct RpcClientState* rpc_client_state) {
+    // Start (or continue) sending serialized response (or rather "message" in
+    // general, it can be request or response).
     int eagain_count = 0;
     while (rpc_client_state->output_send_remaining > 0) {
         DEBUG(fprintf(stderr, "sending %zu bytes\n", rpc_client_state->output_send_remaining));
@@ -407,7 +422,9 @@ static int protocol_send(struct RpcClientState* rpc_client_state) {
             break;
         }
     }
-    }
+
+    // We don't deallocate output_data_buffer even if we finished sending
+    // everything. This is for reuse later.
 
     // Note, that in case of error of working more on the data,
     // we don't mess with rpc_client_state->response, even if it is not NULL.
@@ -420,21 +437,24 @@ static int protocol_send(struct RpcClientState* rpc_client_state) {
         DEBUG(fprintf(stderr, "sending will be continued later, remaining %zu bytes\n", rpc_client_state->output_send_remaining));
         return ERROR_MORE_NEEDED;
     }
+}
 
-    // We don't deallocate output_data_buffer even if we finished sending
-    // everything. This is for reuse later.
-
-
-    return ERROR_DONE;
-
-error_0:
-    if (rpc_client_state->response) {
-        pb_release(Message_fields, rpc_client_state->response);
-        free(rpc_client_state->response);
-        rpc_client_state->response = NULL;
+static int protocol_send(struct RpcClientState* rpc_client_state) {
+    DEBUG(fprintf(stderr, "protocol_send\n"));
+    {
+        int ret = protocol_send_serialize_maybe(rpc_client_state);
+        if (ret) {
+            return ret;
+        }
+    }
+    {
+        int ret = protocol_send_more_data_maybe(rpc_client_state);
+        if (ret) {
+            return ret;
+        }
     }
 
-    return 1;
+    return ERROR_DONE;
 }
 
 // static
