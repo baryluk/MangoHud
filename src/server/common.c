@@ -139,7 +139,7 @@ retry_socket:
         addr.sun_path[sizeof(addr.sun_path) - 1] = '\0';
         assert(strlen(addr.sun_path) == strlen(socket_name));
 
-        fprintf(stderr, "Connecting to server %s\n", socket_name);
+        fprintf(stderr, "Connecting to rpc server %s\n", socket_name);
 
 retry_connect:
         if (connect(data_socket, (const struct sockaddr *)&addr,
@@ -172,6 +172,8 @@ retry_connect:
 
     rpc_client_state->fsocket = fsocket;
     rpc_client_state->connected = 1;
+
+    fprintf(stderr, "Connected to rpc server! Yay.\n");
 
     return 0;
     }
