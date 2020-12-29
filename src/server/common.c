@@ -54,6 +54,7 @@ int set_nonblocking(int fd) {
     return 0;
 }
 
+// Connect to the rpc server using UNIX or TCP socket.
 int rpc_client_connect(struct RpcClientState* rpc_client_state) {
     assert(rpc_client_state != NULL);
     if (rpc_client_state->connected) {
@@ -186,6 +187,7 @@ error_2:
 }
 
 
+// Deserialize and call the `request_handler`.
 static int decode_and_handle(struct RpcClientState *rpc_client_state __attribute__((unused)),
                              const uint8_t *const data,
                              int data_size,
@@ -230,52 +232,78 @@ static int decode_and_handle(struct RpcClientState *rpc_client_state __attribute
 #define ERROR_DESERIALIZE -4
 #define ERROR_HANDLER(r) (-5-abs(r))
 
-static int protocol_receive(struct RpcClientState* rpc_client_state,
-                            int(*request_handler)(const Message*, void*) MUST_USE_RESULT,
-                            void* request_handler_state) {
-    DEBUG(fprintf(stderr, "protocol_receive\n"));
-    FILE* file = rpc_client_state->fsocket;
+// This function, if in appropiate state, tries to receive the header, which
+// contains the serialized data size. Once it receives the full header,
+// it decodes it and allocates the receive buffers for the serialized message,
+// used in `protocol_receive_more_data_maybe`.
+//
+// If the header was already received (and not reset yet) before, it does
+// nothing and return 0.
+// Similarly if it just finished receiving it, and parsed it with success,
+// it return 0.
+//
+// Never blocks.
+static int protocol_receive_more_header_data_maybe(struct RpcClientState* rpc_client_state) {
     const size_t header_size = sizeof(uint32_t);
     assert(header_size == 4);
+
+    if (rpc_client_state->input_frame_buffer_length == header_size) {
+        // We already parsed the header, nothing more to do, until
+        // the rest (data and deserializer) of the receive finished.
+        assert(rpc_client_state->input_data_buffer_capacity >= rpc_client_state->input_serialized_size);
+        assert(rpc_client_state->input_data_buffer != NULL);
+        assert(rpc_client_state->input_data_buffer_size >= 0);
+        assert(rpc_client_state->input_data_buffer_size <= rpc_client_state->input_serialized_size);
+
+        return ERROR_DONE;
+    }
+    assert(rpc_client_state->input_frame_buffer_length < header_size);
+
+    FILE* const file = rpc_client_state->fsocket;
+
+    // We don't do any looping, or retries of EAGAIN. This is because header is
+    // so small, that it is unlikely it will help trying to read more, if we
+    // don't receive it whole. So just do that on a next frame.
+
+    const size_t ret = fread_unlocked(rpc_client_state->input_frame_buffer + rpc_client_state->input_frame_buffer_length,
+                                      1,
+                                      header_size - rpc_client_state->input_frame_buffer_length,
+                                      file);
+    const int ret_errno = errno;
+    // This is a mess: https://pubs.opengroup.org/onlinepubs/9699919799/functions/fread.html
+    if (ret <= 0) {
+        if (ferror_unlocked(file)) {
+            if (ret_errno == EAGAIN) {
+                return ERROR_MORE_NEEDED;
+            }
+            DEBUG(perror("fread_unlocked"));
+            return ERROR_NETWORK;
+        }
+        return ERROR_SYSTEM;
+    }
+    rpc_client_state->input_frame_buffer_length += ret;
+    assert(rpc_client_state->input_frame_buffer_length <= header_size);
+    assert(0 <= rpc_client_state->input_frame_buffer_length);
     if (rpc_client_state->input_frame_buffer_length < header_size) {
-       const size_t ret = fread_unlocked(rpc_client_state->input_frame_buffer + rpc_client_state->input_frame_buffer_length,
-                                         1,
-                                         header_size - rpc_client_state->input_frame_buffer_length,
-                                         file);
-       const int ret_errno = errno;
-       // This is a mess: https://pubs.opengroup.org/onlinepubs/9699919799/functions/fread.html
-       if (ret <= 0) {
-          if (ferror_unlocked(file)) {
-              if (ret_errno == EAGAIN) {
-                  return ERROR_MORE_NEEDED;
-              }
-              DEBUG(perror("fread_unlocked"));
-              return ERROR_NETWORK;
-          }
-          return ERROR_SYSTEM;
-       }
-       rpc_client_state->input_frame_buffer_length += ret;
-       assert(rpc_client_state->input_frame_buffer_length <= header_size);
-       assert(0 <= rpc_client_state->input_frame_buffer_length);
-       if (rpc_client_state->input_frame_buffer_length < header_size) {
-           if (ret_errno == EAGAIN) {
-              return ERROR_MORE_NEEDED;
-           }
-           return ERROR_SYSTEM;
-       }
-       if (rpc_client_state->input_frame_buffer_length == header_size) {
-           DEBUG({
-               const uint32_t s = ntohl(*((uint32_t*)(rpc_client_state->input_frame_buffer)));
-               fprintf(stderr, "Got full framing size from client: %d\n", s);
-           });
-       }
+        if (ret_errno == EAGAIN) {
+            return ERROR_MORE_NEEDED;
+        }
+        return ERROR_SYSTEM;
     }
-    if (rpc_client_state->input_frame_buffer_length != header_size) {
-        return ERROR_MORE_NEEDED;
-    }
+
+    assert(rpc_client_state->input_frame_buffer_length == header_size);
+
+    // We got full header. Decode and reallocate data buffers for serialized
+    // message, if needed, and set various thing for use in
+    // `protocol_receive_more_data_maybe` (and in asserts at the top of this
+    // function).
+
     // Dereference the size, and if needed swap bytes to ensure correct endiannes.
     // const uint32_t input_serialized_size = ntohl(*((uint32_t*)(rpc_client_state->input_frame_buffer)));
     const uint32_t input_serialized_size = ntohl(rpc_client_state->input_frame_buffer_uint32);
+    DEBUG(fprintf(stderr, "Got full framing size from client: %d\n", input_serialized_size));
+
+    // Save the the size of serialized message for use in `protocol_receive_more_data_maybe`.
     rpc_client_state->input_serialized_size = input_serialized_size;
     if (rpc_client_state->input_data_buffer == NULL || rpc_client_state->input_data_buffer_size == 0) {
         const size_t input_data_buffer_new_capacity = input_serialized_size * sizeof(uint8_t);
@@ -285,58 +313,138 @@ static int protocol_receive(struct RpcClientState* rpc_client_state,
     }
     assert(rpc_client_state->input_data_buffer != NULL);
     assert(rpc_client_state->input_data_buffer_capacity >= input_serialized_size);
+
+    // Ensure again, to validate the reentry condition.
+    assert(rpc_client_state->input_frame_buffer_length == header_size);
+
+    return ERROR_DONE;
+}
+
+// Assuming header size is already known, and proper receive data buffers were
+// allocated and initialized (as done by `protocol_receive_more_header_data_maybe`,
+// try to receive as much data as possible from the socket, but don't block
+// if this can't be done.
+//
+// If whole serialized message was received, deserialized and call
+// `request_handler` with it.
+//
+// Never blocks.
+static int protocol_receive_more_data_maybe(
+                            struct RpcClientState* rpc_client_state,
+                            int(*request_handler)(const Message*, void*) MUST_USE_RESULT,
+                            void* request_handler_state) {
+    // Just an extra assert to make sure, we are called at the appropiate time.
+    const size_t header_size = sizeof(uint32_t);
+    assert(rpc_client_state->input_frame_buffer_length == header_size);
+
     // Technically we can do a bit of looping here, especially if ret_errno
     // is EAGAIN, but we leave it to the higher level functions (`use_fd`
     // and `client_maybe_communicate`).
+    //
+    // It probably might be a good idea to retry EINTR tho.
+    // TODO(baryluk): Check if EINTR is handled at all correctly now.
+    const uint32_t input_serialized_size = rpc_client_state->input_serialized_size;
     if (rpc_client_state->input_data_buffer_size < input_serialized_size) {
-       DEBUG(fprintf(stderr, "Still to read from client: %zu\n",
-                             input_serialized_size - rpc_client_state->input_data_buffer_size));
-       const size_t ret = fread_unlocked(rpc_client_state->input_data_buffer + rpc_client_state->input_data_buffer_size,
-                                         1,
-                                         input_serialized_size - rpc_client_state->input_data_buffer_size,
-                                         file);
-       const int ret_errno = errno;
-       if (ret == 0) {
-          if (ferror_unlocked(file)) {
-              if (ret_errno == EAGAIN) {
-                  // fclearerr_unlocked(file);
-                  return ERROR_MORE_NEEDED;
-              }
-              DEBUG(perror("fread_unlocked"));
-              return ERROR_NETWORK;
-          }
-          if (feof_unlocked(file)) {
-              return ERROR_NETWORK;
-          }
-          return ERROR_SYSTEM;
-       }
-       assert(ret <= input_serialized_size - rpc_client_state->input_data_buffer_size);
-       rpc_client_state->input_data_buffer_size += ret;
-       assert(rpc_client_state->input_data_buffer_size <= input_serialized_size);
-       assert(0 <= rpc_client_state->input_data_buffer_size);
-       if (rpc_client_state->input_data_buffer_size < input_serialized_size) {
-           if (ret_errno == EAGAIN) {
-              return ERROR_MORE_NEEDED;
-           }
-           return ERROR_SYSTEM;
-       }
+        FILE* const file = rpc_client_state->fsocket;
+        DEBUG(fprintf(stderr, "Still to read from client: %zu\n",
+                              input_serialized_size - rpc_client_state->input_data_buffer_size));
+        const size_t ret = fread_unlocked(rpc_client_state->input_data_buffer + rpc_client_state->input_data_buffer_size,
+                                          1,
+                                          input_serialized_size - rpc_client_state->input_data_buffer_size,
+                                          file);
+        const int ret_errno = errno;
+        if (ret == 0) {
+            if (ferror_unlocked(file)) {
+                 if (ret_errno == EAGAIN) {
+                     // fclearerr_unlocked(file);
+                     return ERROR_MORE_NEEDED;
+                 }
+                 DEBUG(perror("fread_unlocked"));
+                 return ERROR_NETWORK;
+            }
+            if (feof_unlocked(file)) {
+                return ERROR_NETWORK;
+            }
+            return ERROR_SYSTEM;
+        }
+        assert(ret <= input_serialized_size - rpc_client_state->input_data_buffer_size);
+        rpc_client_state->input_data_buffer_size += ret;
+        assert(rpc_client_state->input_data_buffer_size <= input_serialized_size);
+        assert(0 <= rpc_client_state->input_data_buffer_size);
+        if (rpc_client_state->input_data_buffer_size < input_serialized_size) {
+            if (ret_errno == EAGAIN) {
+                return ERROR_MORE_NEEDED;
+            }
+            return ERROR_SYSTEM;
+        }
     }
+
     assert(rpc_client_state->input_data_buffer_size == input_serialized_size);
-    if (rpc_client_state->input_data_buffer_size == input_serialized_size) {
-       const int ret = decode_and_handle(rpc_client_state, rpc_client_state->input_data_buffer, input_serialized_size, request_handler, request_handler_state);
-       rpc_client_state->input_data_buffer_size = 0;
-       rpc_client_state->input_frame_buffer_length = 0;
-       rpc_client_state->input_serialized_size = 0;
-       // We don't free the buffer, so we can reuse it on next frame.
-       if (ret) {
-         return ERROR_HANDLER(ret);  // or ERROR_DESERIALIZE
-       } else {
-         return ERROR_DONE;
-       }
+
+    const int ret = decode_and_handle(rpc_client_state, rpc_client_state->input_data_buffer, input_serialized_size, request_handler, request_handler_state);
+    rpc_client_state->input_data_buffer_size = 0;
+    // Reset the received header length, so the `protocol_receive_more_header_data_maybe`
+    // can do useful work again.
+    rpc_client_state->input_frame_buffer_length = 0;
+    rpc_client_state->input_serialized_size = 0;
+    // We don't free the buffer, so we can reuse it on next frame.
+
+    if (ret) {
+        return ERROR_HANDLER(ret);  // or ERROR_DESERIALIZE
     }
     return ERROR_DONE;
 }
 
+// Try to read more data from the socket.
+//
+// It is safe to call at any point, even if there are messages being sent,
+// or there is partial or no data to be received from the socket.
+//
+// Never blocks.
+static int protocol_receive(struct RpcClientState* rpc_client_state,
+                            int(*request_handler)(const Message*, void*) MUST_USE_RESULT,
+                            void* request_handler_state) {
+    DEBUG(fprintf(stderr, "protocol_receive\n"));
+    {
+        // It is safe to call this, even if we already received header fully.
+        // It is safe to call again, even if it already allocated data buffers
+        // that are in use right now!
+        int ret = protocol_receive_more_header_data_maybe(rpc_client_state);
+        // Note: Don't go into protocol_receive_more_data_maybe,
+        // if we didn't get any header yet or there was other issue
+        // when getting or parsing header.
+        if (ret) {
+            return ret;
+        }
+        assert(ret == ERROR_DONE);
+    }
+    {
+        int ret = protocol_receive_more_data_maybe(rpc_client_state,
+                                                   request_handler,
+                                                   request_handler_state);
+        if (ret) {
+            return ret;
+        }
+        assert(ret == ERROR_DONE);
+    }
+
+    return ERROR_DONE;
+}
+
+// Try to send as much data (as possible to the socket,
+// if there is anything to send and can be done without blocking.
+//
+// This takes the rpc_client_state->response, calculates its size,
+// serializes it,  prepares output buffers (with serialized size and response),
+// and send it as much as possible.
+//
+// When done, returns ERROR_DONE, and free the response,
+// and optionaly output buffers (they are usually reused instead tho).
+//
+// It not legal to call this function with rpc_client_state->response
+// being NULL.
+//
+// Never blocks.
 static int protocol_send_serialize_maybe(struct RpcClientState* rpc_client_state) {
     // Serialize response if we can, otherwise do nothing.
     if (rpc_client_state->output_send_remaining != 0) {
@@ -388,6 +496,16 @@ error_0:
     return ERROR_SERIALIZE;
 }
 
+// Send more data, as long there is something to send.
+//
+// It will retrie minor transient errors. But if the whole message
+// cann't be sent, it will require calling this function again,
+// until it returns ERROR_DONE.
+//
+// This function requirest the `protocol_send_serialize_maybe` already
+// was called and returned `ERROR_DONE`.
+//
+// Never blocks.
 static int protocol_send_more_data_maybe(struct RpcClientState* rpc_client_state) {
     // Start (or continue) sending serialized response (or rather "message" in
     // general, it can be request or response).
@@ -404,9 +522,9 @@ static int protocol_send_more_data_maybe(struct RpcClientState* rpc_client_state
             if (errno == EAGAIN) {
                 eagain_count++;
                 if (eagain_count < 2) {
-                   continue;
+                    continue;
                 } else {
-                   return ERROR_MORE_NEEDED;
+                    return ERROR_MORE_NEEDED;
                 }
             }
             perror("send");
@@ -430,13 +548,15 @@ static int protocol_send_more_data_maybe(struct RpcClientState* rpc_client_state
     // we don't mess with rpc_client_state->response, even if it is not NULL.
     // It is going to wait, and we will only process it next time,
     // once we finish with the current sending.
-    if (rpc_client_state->output_send_remaining == 0) {
-        DEBUG(fprintf(stderr, "sending done\n"));
-        return ERROR_DONE;
-    } else {
+    if (rpc_client_state->output_send_remaining != 0) {
+        assert(rpc_client_state->output_send_remaining > 0);
+        assert(rpc_client_state->output_send_remaining <= rpc_client_state->output_serialized_size);
         DEBUG(fprintf(stderr, "sending will be continued later, remaining %zu bytes\n", rpc_client_state->output_send_remaining));
         return ERROR_MORE_NEEDED;
     }
+
+    DEBUG(fprintf(stderr, "sending done\n"));
+    return ERROR_DONE;
 }
 
 static int protocol_send(struct RpcClientState* rpc_client_state) {
