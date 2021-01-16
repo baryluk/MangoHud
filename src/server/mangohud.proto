@@ -54,7 +54,6 @@ message Message {
   string program_name = 17;
   string wine_version = 18;
 
-
   // Just in case multiple connections are made from same process / thread.
   // An easy way is to return a memory address of the ClientState, or global
   // variable counter. Id's can be recycled between reconnects.
@@ -126,6 +125,12 @@ message Message {
   // Note.
 };
 
+// TODO(baryluk): Report this back:
+//
+// bool HUDElements.gamemode_bol
+// bool HUDElements.vkbasalt_bol
+
+
 message Alive {
   uint32 dummy = 1;
 }
@@ -147,11 +152,15 @@ message Architecture {
   OS os = 1;
   string distro = 2;
   string distro_version = 3;
-  string kernel_version = 4;
-  string architecture = 5;
-  string mangohud_library_version = 6;
-  string mangohud_server_verion = 7;
-  string mangohud_gui_version = 8;
+
+  string kernel_release = 4;
+  string kernel_version = 5;
+  string kernel_machine = 6;
+  string architecture = 7;
+
+  string mangohud_library_version = 100;
+  string mangohud_server_version = 101;
+  string mangohud_gui_version = 102;
 }
 
 message RenderInfo {
@@ -164,6 +173,7 @@ message RenderInfo {
   int32 opengl_version_minor = 13;
   bool opengl_is_gles = 14;
   repeated string opengl_extensions = 15;
+  string opengl_renderer = 16;
 
   string engine_name = 20;
   string engine_version = 21;
@@ -277,10 +287,12 @@ message GpuInfo {
   int32 mem_clock_kHz = 22;
   int32 mem_clock_max_kHz = 23;
 
-  float gpu_load = 30;
+  float gpu_load = 30;  // 0.0 - 1.0
 
-  float power_W = 31;
+  float power_mW = 31;
 
+  uint64 memory_used_KiB = 40;
+  uint64 memory_total_KiB = 41;
 
   // AMD Radeon extensions.
   float event_engine = 51;
@@ -302,40 +314,56 @@ message CpuInfo {
   repeated string isa_extensions = 2;  // "avx2"
   string cpufreq_governor = 3;
 
-  repeated int32 core_clock_kHz = 4;
-  repeated int32 core_temp_C = 5;
+  // Per-core stats. This most likely includes hardware "threads".
+  // So often each "core" will be included actually twice.
+  repeated int32 core_clock_kHz = 10;
+  repeated int32 core_temp_C = 11;
+  repeated int32 core_power_mW = 12;
+  repeated float core_load = 13;  // Core loads. 0.0 - 1.0 each.
 
-  repeated float load = 6;  // Core loads.
+  // Aggregates for all cores in the system.
+  int32 avg_core_clock_kHz = 20;  // Average of clocks of all cores.
+  int32 avg_core_temp_C = 21;  // Average of temperatures of all cores.
+  int32 total_power_mW = 22;  // All cores + SoC / uncore.
+  float total_load = 23;  // Overall CPU load. 1.0 == 100% means 1 core totally loaded. 8.0 == 800% means 8 cores totally loaded.
 
-  float load_user = 7;
-  float load_sys = 8;
-  float load_nice = 9;
-  float load_idle = 10;
-  float load_wait = 11;
+  float load_user = 30;
+  float load_sys = 31;
+  float load_nice = 32;
+  float load_idle = 33;
+  float load_wait = 34;
   // hi, si, st
 
-  uint32 tasks = 20;
-  uint32 tasks_runnable = 21;
-  uint32 tasks_running = 22;
-  uint32 tasks_stopped = 23;
-  uint32 tasks_zombie = 24;
+  uint32 tasks = 40;
+  uint32 tasks_runnable = 41;
+  uint32 tasks_running = 42;
+  uint32 tasks_stopped = 43;
+  uint32 tasks_zombie = 44;
 
-  uint64 uptime_msec = 30;
+  uint64 uptime_msec = 50;
 
-  repeated float load_average = 40;
+  repeated float load_average = 60;
 }
 
 message MemInfo {
   // All values in KiB (not pages).
+
   uint64 total = 1;
   uint64 free = 2;
   uint64 used = 3;
   uint64 buffers = 4;
-  uint64 cache = 5;
+  uint64 cached = 5;
   uint64 available = 6;
   uint64 swap_total = 10;
   uint64 swap_free = 11;
   uint64 swap_used = 12;
+
+  uint64 shmem = 20;
+  uint64 sreclaimable = 21;
+  uint64 dirty = 22;
+
+  // MemTotal - (MemFree + (Cached - Shmem) + Buffers + SReclaimable)
+  uint64 smart_used = 30;
 }
 
 message IoInfo {
