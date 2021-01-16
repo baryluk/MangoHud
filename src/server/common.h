@@ -42,7 +42,7 @@ extern "C" {
 //            PB_MALLOC_SET(request.rander_info, RenderInfo_init_zero);
 //            PB_MALLOC_SET(request.rander_info->vulkan, true);
 //
-//            pb_release(&Message_fields, &request);
+//            pb_release(Message_fields, &request);
 //
 // These can be used only on fields marked as FT_POINTER (using nanopb
 // annotations).
@@ -81,7 +81,7 @@ extern "C" {
      if (to) { \
          free(to); \
      } \
-     to = strdup(from); \
+     (to) = strdup(from); \
   } \
 } while (0)
 
@@ -233,4 +233,4 @@ void rpc_client_maybe_communicate(struct RpcClientState *rpc_client_state,
 }
 #endif
 
-#endif
+#endif  // _MANGO_SERVER_COMMON_H_
